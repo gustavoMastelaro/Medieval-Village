@@ -4,11 +4,12 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { GUI } from 'three/examples/jsm/libs/lil-gui.module.min.js';
 
-import houseModelUrl from './modelos/casa/House-nihGGju7DW.glb?url';
+import houseModelUrl from './modelos/construcoes/House-nihGGju7DW.glb?url';
 import treeModelUrl from './modelos/arvore/CommonTree_3.fbx?url';
 import animalModelUrl from './modelos/animal/Horse.fbx?url';
+import bonfireModelUrl from './modelos/construcoes/bonfire.glb?url';
 
-const SKY_COLOR = new THREE.Color(0xbfe6ff);
+const SKY_COLOR = new THREE.Color(0x071a36);
 
 const scene = new THREE.Scene();
 scene.background = SKY_COLOR;
@@ -93,12 +94,9 @@ function updateMovement(delta) {
   }
 }
 
-const light = new THREE.DirectionalLight(0xffffff, 1.2);
-light.position.set(10, 20, 10);
-scene.add(light);
-
-const ambient = new THREE.AmbientLight(0xffffff, 0.7);
-scene.add(ambient);
+const fireLight = new THREE.PointLight(0xffa94d, 5, 25, 2);
+fireLight.position.set(0, 1.2, 0);
+scene.add(fireLight);
 
 const ground = new THREE.Mesh(
   new THREE.CircleGeometry(30, 60),
@@ -155,6 +153,13 @@ async function buildVillage() {
     position: new THREE.Vector3(0, 0, 0),
     rotationY: Math.PI / 6,
     scale: 10,
+  });
+
+  const bonfire = await loadGLTF(bonfireModelUrl);
+  prepareModel(bonfire, {
+    position: new THREE.Vector3(0, 0, 0),
+    rotationY: 0,
+    scale: 1.4,
   });
 
   const tree = await loadFBX(treeModelUrl);
