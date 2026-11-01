@@ -94,9 +94,23 @@ function updateMovement(delta) {
   }
 }
 
-const fireLight = new THREE.PointLight(0xffa94d, 5, 25, 2);
+const fireLight = new THREE.PointLight(0xffa94d, 40, 40, 1.5);
 fireLight.position.set(0, 1.2, 0);
 scene.add(fireLight);
+
+const lua = new THREE.Mesh(
+  new THREE.SphereGeometry(4, 32, 32),
+  new THREE.MeshBasicMaterial({ color: 0xf2f2e6 }),
+);
+lua.position.set(-40, 55, -55);
+scene.add(lua);
+
+const luzLua = new THREE.PointLight(0xaec6ff, 2500, 0, 2);
+luzLua.position.copy(lua.position);
+scene.add(luzLua);
+
+const luzAmbiente = new THREE.AmbientLight(0x4060a0, 0.4);
+scene.add(luzAmbiente);
 
 const ground = new THREE.Mesh(
   new THREE.CircleGeometry(30, 60),
