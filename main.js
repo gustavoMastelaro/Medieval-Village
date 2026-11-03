@@ -27,6 +27,9 @@ camera.lookAt(0, EYE_HEIGHT, 0);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
+// Sombras habilitadas
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.info.autoReset = false;
 document.body.appendChild(renderer.domElement);
 
@@ -94,10 +97,17 @@ function updateMovement(delta) {
   }
 }
 
-const fireLight = new THREE.PointLight(0xffa94d, 40, 40, 1.5);
-fireLight.position.set(0, 1.2, 0);
+// Luz da fogueira (com sombra)
+const fireLight = new THREE.PointLight(0xffa94d, 100, 25, 2);
+fireLight.position.set(1, 1, 1);
+fireLight.castShadow = true;
+fireLight.shadow.mapSize.set(1024, 1024);
+fireLight.shadow.bias = -0.003;
+fireLight.shadow.radius = 4;
+fireLight.shadow.normalBias = 0.03;
 scene.add(fireLight);
 
+// Lua
 const lua = new THREE.Mesh(
   new THREE.SphereGeometry(4, 32, 32),
   new THREE.MeshBasicMaterial({ color: 0xf2f2e6 }),
@@ -105,11 +115,16 @@ const lua = new THREE.Mesh(
 lua.position.set(-40, 55, -55);
 scene.add(lua);
 
-const luzLua = new THREE.PointLight(0xaec6ff, 2500, 0, 2);
+// Luz da lua (com sombra)
+const luzLua = new THREE.PointLight(0xaec6ff, 5000, 220, 2);
 luzLua.position.copy(lua.position);
+luzLua.castShadow = true;
+luzLua.shadow.mapSize.set(2048, 2048);
+luzLua.shadow.bias = -0.0015;
+luzLua.shadow.radius = 2;
 scene.add(luzLua);
 
-const luzAmbiente = new THREE.AmbientLight(0x4060a0, 0.4);
+const luzAmbiente = new THREE.AmbientLight(0x4060a0, 0.12);
 scene.add(luzAmbiente);
 
 const ground = new THREE.Mesh(
@@ -117,24 +132,30 @@ const ground = new THREE.Mesh(
   new THREE.MeshStandardMaterial({ color: 0x7dbd64 }),
 );
 ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
 scene.add(ground);
 
 function prepareModel(model, options = {}) {
   const { position = new THREE.Vector3(0, 0, 0), rotationY = 0, scale = 1 } = options;
 
   model.traverse((child) => {
-    if (child.isMesh && child.material) {
-      const material = child.material;
-      if (Array.isArray(material)) {
-        material.forEach((m) => {
-          m.transparent = false;
-          m.opacity = 1;
-          m.depthWrite = true;
-        });
-      } else {
-        material.transparent = false;
-        material.opacity = 1;
-        material.depthWrite = true;
+    if (child.isMesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+
+      if (child.material) {
+        const material = child.material;
+        if (Array.isArray(material)) {
+          material.forEach((m) => {
+            m.transparent = false;
+            m.opacity = 1;
+            m.depthWrite = true;
+          });
+        } else {
+          material.transparent = false;
+          material.opacity = 1;
+          material.depthWrite = true;
+        }
       }
     }
   });
