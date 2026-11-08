@@ -5,8 +5,16 @@ import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { GUI } from 'three/examples/jsm/libs/lil-gui.module.min.js';
 
 import houseModelUrl from './modelos/construcoes/House-nihGGju7DW.glb?url';
+import houseModelSimpleUrl from './modelos/construcoes/House.glb?url';
+import houseModelAltUrl from './modelos/construcoes/House-RSwoYSLblu.glb?url';
+import houseModelAlt2Url from './modelos/construcoes/House-YlADpCJU8U.glb?url';
 import treeModelUrl from './modelos/arvore/CommonTree_3.fbx?url';
+import treeModelAltUrl from './modelos/arvore/CommonTree_4.fbx?url';
+import treeModelAlt2Url from './modelos/arvore/CommonTree_5.fbx?url';
+import flowerModelUrl from './modelos/arvore/Flower_3_Group.fbx?url';
+import flowerModelAltUrl from './modelos/arvore/Flower_4_Group.fbx?url';
 import animalModelUrl from './modelos/animal/Horse.fbx?url';
+import animalPugModelUrl from './modelos/animal/Pug.fbx?url';
 import bonfireModelUrl from './modelos/construcoes/bonfire.glb?url';
 
 const SKY_COLOR = new THREE.Color(0x071a36);
@@ -70,7 +78,7 @@ function setKey(code, pressed) {
 
 const WALK_SPEED = 5;
 const RUN_SPEED = 10;
-const WORLD_RADIUS = 28;
+const WORLD_RADIUS = 45;
 
 const timer = new THREE.Timer();
 
@@ -128,7 +136,7 @@ const luzAmbiente = new THREE.AmbientLight(0x4060a0, 0.12);
 scene.add(luzAmbiente);
 
 const ground = new THREE.Mesh(
-  new THREE.CircleGeometry(30, 60),
+  new THREE.CircleGeometry(42, 80),
   new THREE.MeshStandardMaterial({ color: 0x7dbd64 }),
 );
 ground.rotation.x = -Math.PI / 2;
@@ -183,32 +191,131 @@ function loadFBX(url) {
 }
 
 async function buildVillage() {
-  const house = await loadGLTF(houseModelUrl);
-  prepareModel(house, {
-    position: new THREE.Vector3(0, 0, 0),
-    rotationY: Math.PI / 6,
-    scale: 10,
-  });
-
   const bonfire = await loadGLTF(bonfireModelUrl);
   prepareModel(bonfire, {
     position: new THREE.Vector3(0, 0, 0),
     rotationY: 0,
-    scale: 1.4,
+    scale: 1.5,
   });
 
-  const tree = await loadFBX(treeModelUrl);
-  prepareModel(tree, {
-    position: new THREE.Vector3(-10, 0, -8),
-    rotationY: 0.7,
-    scale: 0.015,
+  const houses = await Promise.all([
+    loadGLTF(houseModelUrl),
+    loadGLTF(houseModelSimpleUrl),
+    loadGLTF(houseModelAltUrl),
+    loadGLTF(houseModelAlt2Url),
+    loadGLTF(houseModelUrl),
+    loadGLTF(houseModelSimpleUrl),
+  ]);
+
+  const housePositions = [
+    new THREE.Vector3(-18, 0, -10),
+    new THREE.Vector3(-18, 0, 10),
+    new THREE.Vector3(-8, 0, -20),
+    new THREE.Vector3(-8, 0, 20),
+    new THREE.Vector3(18, 0, -10),
+    new THREE.Vector3(18, 0, 10),
+  ];
+
+  houses.forEach((house, index) => {
+    prepareModel(house, {
+      position: housePositions[index],
+      rotationY: index % 2 === 0 ? 0.9 : -0.9,
+      scale: 8.8,
+    });
   });
 
-  const horse = await loadFBX(animalModelUrl);
-  prepareModel(horse, {
-    position: new THREE.Vector3(8, 0.1, 6),
-    rotationY: -0.9,
-    scale: 0.003,
+  const trees = await Promise.all([
+    loadFBX(treeModelUrl),
+    loadFBX(treeModelAltUrl),
+    loadFBX(treeModelAlt2Url),
+    loadFBX(treeModelUrl),
+    loadFBX(treeModelAltUrl),
+    loadFBX(treeModelAlt2Url),
+    loadFBX(treeModelUrl),
+    loadFBX(treeModelAltUrl),
+  ]);
+
+  const treePositions = [
+    new THREE.Vector3(-24, 0, -18),
+    new THREE.Vector3(-28, 0, 0),
+    new THREE.Vector3(-22, 0, 20),
+    new THREE.Vector3(-6, 0, 26),
+    new THREE.Vector3(10, 0, 25),
+    new THREE.Vector3(25, 0, 18),
+    new THREE.Vector3(26, 0, -16),
+    new THREE.Vector3(8, 0, -24),
+  ];
+
+  trees.forEach((tree, index) => {
+    prepareModel(tree, {
+      position: treePositions[index],
+      rotationY: 0.4 + index * 0.5,
+      scale: 0.015 + (index % 3) * 0.001,
+    });
+  });
+
+  const flowers = await Promise.all([
+    loadFBX(flowerModelUrl),
+    loadFBX(flowerModelAltUrl),
+    loadFBX(flowerModelUrl),
+    loadFBX(flowerModelAltUrl),
+  ]);
+
+  const flowerPositions = [
+    new THREE.Vector3(6, 0, -6),
+    new THREE.Vector3(-6, 0, 7),
+    new THREE.Vector3(14, 0, 4),
+    new THREE.Vector3(-12, 0, -5),
+  ];
+
+  flowers.forEach((flower, index) => {
+    prepareModel(flower, {
+      position: flowerPositions[index],
+      rotationY: index % 2 === 0 ? 0.3 : -0.7,
+      scale: 0.03,
+    });
+  });
+
+  const horses = await Promise.all([
+    loadFBX(animalModelUrl),
+    loadFBX(animalModelUrl),
+    loadFBX(animalModelUrl),
+  ]);
+
+  const horsePositions = [
+    new THREE.Vector3(7, 0.1, 8),
+    new THREE.Vector3(-10, 0.1, -7),
+    new THREE.Vector3(14, 0.1, -12),
+  ];
+
+  horses.forEach((horse, index) => {
+    prepareModel(horse, {
+      position: horsePositions[index],
+      rotationY: index === 0 ? -0.9 : 0.7,
+      scale: 0.003,
+    });
+  });
+
+  const dogs = await Promise.all([
+    loadFBX(animalPugModelUrl),
+    loadFBX(animalPugModelUrl),
+    loadFBX(animalPugModelUrl),
+    loadFBX(animalPugModelUrl),
+  ]);
+
+  const dogPositions = [
+    new THREE.Vector3(4, 0.1, 10),
+    new THREE.Vector3(-3, 0.1, -10),
+    new THREE.Vector3(12, 0.1, -6),
+    new THREE.Vector3(-12, 0.1, 5),
+  ];
+
+  dogs.forEach((dog, index) => {
+    prepareModel(dog, {
+      position: dogPositions[index],
+      rotationY: index % 2 === 0 ? 0.6 : -0.9,
+      scale: 0.004,
+    });
   });
 }
 
