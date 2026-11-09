@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 import { GUI } from 'three/examples/jsm/libs/lil-gui.module.min.js';
 
 import houseModelUrl from './modelos/construcoes/House-nihGGju7DW.glb?url';
@@ -16,6 +17,14 @@ import flowerModelAltUrl from './modelos/arvore/Flower_4_Group.fbx?url';
 import animalModelUrl from './modelos/animal/Horse.fbx?url';
 import animalPugModelUrl from './modelos/animal/Pug.fbx?url';
 import bonfireModelUrl from './modelos/construcoes/bonfire.glb?url';
+
+import skyHdrUrl from './texturas/ceu_estrelado_2k.hdr?url';
+import grassColorUrl from './texturas/grama_cor.jpg?url';
+import grassNormalUrl from './texturas/grama_normal.png?url';
+import dirtColorUrl from './texturas/terra_cor.jpg?url';
+import dirtNormalUrl from './texturas/terra_normal.png?url';
+import pathMaskUrl from './texturas/mascara_caminho.png?url';
+import plazaMaskUrl from './texturas/mascara_praca.png?url';
 
 const SKY_COLOR = new THREE.Color(0x071a36);
 
@@ -37,7 +46,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 // Sombras habilitadas
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.info.autoReset = false;
 document.body.appendChild(renderer.domElement);
 
@@ -118,7 +127,7 @@ scene.add(fireLight);
 // Lua
 const lua = new THREE.Mesh(
   new THREE.SphereGeometry(4, 32, 32),
-  new THREE.MeshBasicMaterial({ color: 0xf2f2e6 }),
+  new THREE.MeshBasicMaterial({ color: 0xf2f2e6, fog: false }),
 );
 lua.position.set(-40, 55, -55);
 scene.add(lua);
@@ -135,13 +144,172 @@ scene.add(luzLua);
 const luzAmbiente = new THREE.AmbientLight(0x4060a0, 0.12);
 scene.add(luzAmbiente);
 
-const ground = new THREE.Mesh(
-  new THREE.CircleGeometry(42, 80),
-  new THREE.MeshStandardMaterial({ color: 0x7dbd64 }),
-);
+// ---------------------------------------------------------------------------
+// Casas (posições compartilhadas: usadas pelos modelos e pelos caminhos de terra)
+// ---------------------------------------------------------------------------
+const HOUSE_POSITIONS = [
+  new THREE.Vector3(-18, 0, -10),
+  new THREE.Vector3(-18, 0, 10),
+  new THREE.Vector3(-8, 0, -20),
+  new THREE.Vector3(-8, 0, 20),
+  new THREE.Vector3(18, 0, -10),
+  new THREE.Vector3(18, 0, 10),
+];
+
+// ---------------------------------------------------------------------------
+// Chão da vila: grama + praça de terra batida + caminhos até as casas
+// ---------------------------------------------------------------------------
+const GROUND_RADIUS = 100;
+const GRASS_TILE = 4; // tamanho (unidades do mundo) de cada repetição da grama
+const DIRT_TILE = 3; // idem, para a terra
+const PLAZA_RADIUS = 7;
+const PATH_WIDTH = 3.4;
+const PATH_START = 3; // o caminho começa dentro da praça
+const HOUSE_CLEARANCE = 6.5; // distância do centro da casa onde o caminho termina
+
+// A neblina esconde a borda do chão e tem a mesma cor do horizonte do HDR.
+const FOG_COLOR = 0x0a1830;
+scene.fog = new THREE.Fog(FOG_COLOR, 45, 95);
+
+const textureLoader = new THREE.TextureLoader();
+const maxAnisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 8);
+
+function loadTexture(url, { srgb = false, repeat = false } = {}) {
+  const texture = textureLoader.load(url);
+  if (srgb) texture.colorSpace = THREE.SRGBColorSpace;
+  if (repeat) texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.anisotropy = maxAnisotropy;
+  return texture;
+}
+
+const grassColor = loadTexture(grassColorUrl, { srgb: true, repeat: true });
+const grassNormal = loadTexture(grassNormalUrl, { repeat: true });
+const dirtColor = loadTexture(dirtColorUrl, { srgb: true, repeat: true });
+const dirtNormal = loadTexture(dirtNormalUrl, { repeat: true });
+
+// Máscaras de transparência (bordas irregulares) dos caminhos e da praça.
+// Ficam no canal de UV 1, para a terra poder repetir no canal 0.
+const pathMask = loadTexture(pathMaskUrl);
+const plazaMask = loadTexture(plazaMaskUrl);
+pathMask.channel = 1;
+plazaMask.channel = 1;
+
+// Grama: textura repetida por todo o chão.
+const grassRepeat = (GROUND_RADIUS * 2) / GRASS_TILE;
+grassColor.repeat.set(grassRepeat, grassRepeat);
+grassNormal.repeat.set(grassRepeat, grassRepeat);
+
+const groundMaterial = new THREE.MeshStandardMaterial({
+  map: grassColor,
+  normalMap: grassNormal,
+  normalScale: new THREE.Vector2(0.9, 0.9),
+  color: new THREE.Color().setScalar(1.45), // clareia a grama (a cena é noturna)
+  roughness: 1,
+  metalness: 0,
+});
+
+// Quebra a repetição visível da grama: amostra a mesma textura em escala bem
+// maior e usa o resultado para clarear/escurecer grandes manchas do terreno.
+groundMaterial.onBeforeCompile = (shader) => {
+  shader.fragmentShader = shader.fragmentShader.replace(
+    '#include <map_fragment>',
+    `#include <map_fragment>
+     float macro = texture2D( map, vMapUv * 0.037 ).g;
+     diffuseColor.rgb *= mix( 0.78, 1.18, smoothstep( 0.22, 0.33, macro ) );`,
+  );
+};
+
+const ground = new THREE.Mesh(new THREE.CircleGeometry(GROUND_RADIUS, 96), groundMaterial);
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
+
+// Terra: pedaços planos logo acima da grama, com bordas suaves (alphaMap).
+function createDirtMaterial(alphaMap) {
+  return new THREE.MeshStandardMaterial({
+    map: dirtColor,
+    normalMap: dirtNormal,
+    alphaMap,
+    color: new THREE.Color().setScalar(1.3),
+    transparent: true,
+    depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+    roughness: 1,
+    metalness: 0,
+  });
+}
+
+const plazaMaterial = createDirtMaterial(plazaMask);
+const pathMaterial = createDirtMaterial(pathMask);
+
+function addDirtPatch(width, depth, material, position, rotationY = 0) {
+  const geometry = new THREE.PlaneGeometry(width, depth);
+  geometry.rotateX(-Math.PI / 2);
+  // UV 1 = máscara (0..1 sobre o pedaço inteiro)
+  geometry.setAttribute('uv1', geometry.attributes.uv.clone());
+
+  const patch = new THREE.Mesh(geometry, material);
+  patch.position.copy(position);
+  patch.rotation.y = rotationY;
+  patch.receiveShadow = true;
+  patch.renderOrder = 1;
+  patch.updateMatrix();
+
+  // UV 0 = posição no mundo, assim a terra da praça e a dos caminhos "casam".
+  const positions = geometry.attributes.position;
+  const uv = geometry.attributes.uv;
+  const vertex = new THREE.Vector3();
+  for (let i = 0; i < uv.count; i++) {
+    vertex.fromBufferAttribute(positions, i).applyMatrix4(patch.matrix);
+    uv.setXY(i, vertex.x / DIRT_TILE, vertex.z / DIRT_TILE);
+  }
+
+  scene.add(patch);
+  return patch;
+}
+
+// Praça de terra em volta da fogueira
+addDirtPatch(PLAZA_RADIUS * 2, PLAZA_RADIUS * 2, plazaMaterial, new THREE.Vector3(0, 0.02, 0));
+
+// Um caminho da praça até a frente de cada casa
+HOUSE_POSITIONS.forEach((housePosition) => {
+  const direction = new THREE.Vector2(housePosition.x, housePosition.z);
+  const distance = direction.length();
+  direction.normalize();
+
+  const end = distance - HOUSE_CLEARANCE;
+  const length = end - PATH_START;
+  const middle = (PATH_START + end) / 2;
+
+  addDirtPatch(
+    length,
+    PATH_WIDTH,
+    pathMaterial,
+    new THREE.Vector3(direction.x * middle, 0.025, direction.y * middle),
+    Math.atan2(-direction.y, direction.x),
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Céu: HDR estrelado (a lua continua sendo a esfera + luz criadas acima)
+// ---------------------------------------------------------------------------
+let skyTexture = null;
+scene.backgroundIntensity = 1;
+scene.environmentIntensity = 0.5;
+
+new HDRLoader()
+  .loadAsync(skyHdrUrl)
+  .then((texture) => {
+    texture.mapping = THREE.EquirectangularReflectionMapping;
+    skyTexture = texture;
+    scene.environment = texture; // reflexos/luz suave vindos do céu
+    applyDiagnostics();
+  })
+  .catch((error) => {
+    console.error('Erro ao carregar o HDR do céu:', error);
+  });
 
 function prepareModel(model, options = {}) {
   const { position = new THREE.Vector3(0, 0, 0), rotationY = 0, scale = 1 } = options;
@@ -207,18 +375,9 @@ async function buildVillage() {
     loadGLTF(houseModelSimpleUrl),
   ]);
 
-  const housePositions = [
-    new THREE.Vector3(-18, 0, -10),
-    new THREE.Vector3(-18, 0, 10),
-    new THREE.Vector3(-8, 0, -20),
-    new THREE.Vector3(-8, 0, 20),
-    new THREE.Vector3(18, 0, -10),
-    new THREE.Vector3(18, 0, 10),
-  ];
-
   houses.forEach((house, index) => {
     prepareModel(house, {
-      position: housePositions[index],
+      position: HOUSE_POSITIONS[index],
       rotationY: index % 2 === 0 ? 0.9 : -0.9,
       scale: 8.8,
     });
@@ -415,7 +574,7 @@ function applyDiagnostics() {
   linearDepthUniform.value = diag.depthRange;
   const depthMaterial = diag.depthMode === 'linear' ? linearDepthMaterial : rawDepthMaterial;
   scene.overrideMaterial = diag.depth ? depthMaterial : null;
-  scene.background = diag.depth ? new THREE.Color(0x000000) : SKY_COLOR;
+  scene.background = diag.depth ? new THREE.Color(0x000000) : (skyTexture ?? SKY_COLOR);
 
   layoutInset();
 }
@@ -454,6 +613,10 @@ function onCameraPlanesChange() {
 }
 cameraFolder.add(camera, 'near', 0.01, 10, 0.01).onChange(onCameraPlanesChange);
 cameraFolder.add(camera, 'far', 20, 500, 1).onChange(onCameraPlanesChange);
+
+const skyFolder = gui.addFolder('Céu (HDR)');
+skyFolder.add(scene, 'backgroundIntensity', 0, 4, 0.05).name('Brilho do céu');
+skyFolder.add(scene, 'environmentIntensity', 0, 2, 0.05).name('Luz do céu no cenário');
 
 const shortcuts = {
   Digit1: 'wireframe',
