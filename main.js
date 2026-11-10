@@ -116,7 +116,7 @@ function updateMovement(delta) {
 
 // Luz da fogueira (com sombra)
 const fireLight = new THREE.PointLight(0xffa94d, 100, 25, 2);
-fireLight.position.set(1, 1, 1);
+fireLight.position.set(0.05, 1.5, -0.09); // acima da lenha, dentro da chama
 fireLight.castShadow = true;
 fireLight.shadow.mapSize.set(1024, 1024);
 fireLight.shadow.bias = -0.003;
@@ -144,9 +144,7 @@ scene.add(luzLua);
 const luzAmbiente = new THREE.AmbientLight(0x4060a0, 0.12);
 scene.add(luzAmbiente);
 
-// ---------------------------------------------------------------------------
-// Casas (posições compartilhadas: usadas pelos modelos e pelos caminhos de terra)
-// ---------------------------------------------------------------------------
+// Casas 
 const HOUSE_POSITIONS = [
   new THREE.Vector3(-18, 0, -10),
   new THREE.Vector3(-18, 0, 10),
@@ -156,9 +154,7 @@ const HOUSE_POSITIONS = [
   new THREE.Vector3(18, 0, 10),
 ];
 
-// ---------------------------------------------------------------------------
-// Chão da vila: grama + praça de terra batida + caminhos até as casas
-// ---------------------------------------------------------------------------
+// Chão da vila
 const GROUND_RADIUS = 100;
 const GRASS_TILE = 4; // tamanho (unidades do mundo) de cada repetição da grama
 const DIRT_TILE = 3; // idem, para a terra
@@ -292,9 +288,7 @@ HOUSE_POSITIONS.forEach((housePosition) => {
   );
 });
 
-// ---------------------------------------------------------------------------
-// Céu: HDR estrelado (a lua continua sendo a esfera + luz criadas acima)
-// ---------------------------------------------------------------------------
+// Céu
 let skyTexture = null;
 scene.backgroundIntensity = 1;
 scene.environmentIntensity = 0.5;
@@ -310,6 +304,278 @@ new HDRLoader()
   .catch((error) => {
     console.error('Erro ao carregar o HDR do céu:', error);
   });
+
+// Fogueira
+const FIRE_BASE = new THREE.Vector3(0.05, 0, -0.09); // centro da base da fogueira
+const FIRE_LIGHT_INTENSITY = 100;
+
+// Tudo que é "efeito" (partículas, fumaça, halo) fica neste grupo.
+const fireEffects = new THREE.Group();
+scene.add(fireEffects);
+
+// Textura macia (círculo com degradê) gerada em canvas, usada em halo, fagulhas e fumaça.
+function createSoftTexture(stops) {
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  stops.forEach(([offset, color]) => gradient.addColorStop(offset, color));
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+const glowTexture = createSoftTexture([
+  [0, 'rgba(255,255,255,1)'],
+  [0.25, 'rgba(255,255,255,0.55)'],
+  [1, 'rgba(255,255,255,0)'],
+]);
+const emberTexture = createSoftTexture([
+  [0, 'rgba(255,255,255,1)'],
+  [0.3, 'rgba(255,255,255,0.9)'],
+  [0.65, 'rgba(255,255,255,0.25)'],
+  [1, 'rgba(255,255,255,0)'],
+]);
+const smokeTexture = createSoftTexture([
+  [0, 'rgba(255,255,255,0.9)'],
+  [0.5, 'rgba(255,255,255,0.35)'],
+  [1, 'rgba(255,255,255,0)'],
+]);
+
+// Valor "orgânico" entre 0 e 1: soma de senos em frequências diferentes.
+function flicker(t, seed = 0) {
+  return (
+    0.5 +
+    0.25 * Math.sin(t * 9.1 + seed) +
+    0.15 * Math.sin(t * 17.3 + seed * 2.1) +
+    0.1 * Math.sin(t * 31.7 + seed * 3.3)
+  );
+}
+
+//Halo de brilho atrás/em volta da chama (aditivo, imita "bloom")
+const fireGlow = new THREE.Sprite(
+  new THREE.SpriteMaterial({
+    map: glowTexture,
+    color: 0xff8a2a,
+    transparent: true,
+    opacity: 0.55,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    fog: false,
+  }),
+);
+fireGlow.position.set(FIRE_BASE.x, 1.5, FIRE_BASE.z);
+fireGlow.scale.setScalar(8);
+fireEffects.add(fireGlow);
+
+//Fagulhas
+const EMBER_COUNT = 90;
+const emberPositions = new Float32Array(EMBER_COUNT * 3);
+const emberColors = new Float32Array(EMBER_COUNT * 3);
+const embers = Array.from({ length: EMBER_COUNT }, () => ({
+  life: 0,
+  maxLife: 1,
+  vx: 0,
+  vy: 0,
+  vz: 0,
+}));
+
+function resetEmber(i, ageFraction = 0) {
+  const ember = embers[i];
+  const radius = Math.random() * 0.7;
+  const angle = Math.random() * Math.PI * 2;
+  ember.maxLife = 1.6 + Math.random() * 2.2;
+  ember.life = ageFraction * ember.maxLife;
+  ember.vx = (Math.random() - 0.5) * 0.5;
+  ember.vy = 0.9 + Math.random() * 1.3;
+  ember.vz = (Math.random() - 0.5) * 0.5;
+  emberPositions[i * 3] = FIRE_BASE.x + Math.cos(angle) * radius + ember.vx * ember.life;
+  emberPositions[i * 3 + 1] = 0.8 + Math.random() * 0.9 + ember.vy * ember.life;
+  emberPositions[i * 3 + 2] = FIRE_BASE.z + Math.sin(angle) * radius + ember.vz * ember.life;
+}
+for (let i = 0; i < EMBER_COUNT; i++) resetEmber(i, Math.random());
+
+const emberGeometry = new THREE.BufferGeometry();
+const emberPositionAttribute = new THREE.BufferAttribute(emberPositions, 3);
+const emberColorAttribute = new THREE.BufferAttribute(emberColors, 3);
+emberPositionAttribute.setUsage(THREE.DynamicDrawUsage);
+emberColorAttribute.setUsage(THREE.DynamicDrawUsage);
+emberGeometry.setAttribute('position', emberPositionAttribute);
+emberGeometry.setAttribute('color', emberColorAttribute);
+
+const emberPoints = new THREE.Points(
+  emberGeometry,
+  new THREE.PointsMaterial({
+    size: 0.28,
+    map: emberTexture,
+    vertexColors: true,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    sizeAttenuation: true,
+    fog: false,
+  }),
+);
+emberPoints.frustumCulled = false; // as posições mudam todo quadro
+fireEffects.add(emberPoints);
+
+// Fumaça (sprites macios que sobem, crescem e somem) 
+const SMOKE_COUNT = 14;
+const SMOKE_WARM = new THREE.Color(0x5a3a28); // logo que sai da chama, ainda iluminada
+const SMOKE_COOL = new THREE.Color(0x2a2f3c);
+const smokePuffs = [];
+
+function resetSmoke(puff, ageFraction = 0) {
+  puff.maxLife = 5 + Math.random() * 3;
+  puff.life = ageFraction * puff.maxLife;
+  puff.velocity.set(0.25 + Math.random() * 0.2, 0.8 + Math.random() * 0.5, (Math.random() - 0.5) * 0.3);
+  puff.start.set(
+    FIRE_BASE.x + (Math.random() - 0.5) * 0.8,
+    2.8,
+    FIRE_BASE.z + (Math.random() - 0.5) * 0.8,
+  );
+}
+
+for (let i = 0; i < SMOKE_COUNT; i++) {
+  const sprite = new THREE.Sprite(
+    new THREE.SpriteMaterial({
+      map: smokeTexture,
+      color: SMOKE_COOL,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+    }),
+  );
+  sprite.material.rotation = Math.random() * Math.PI * 2;
+  fireEffects.add(sprite);
+  const puff = { sprite, life: 0, maxLife: 1, velocity: new THREE.Vector3(), start: new THREE.Vector3() };
+  resetSmoke(puff, Math.random());
+  smokePuffs.push(puff);
+}
+
+//Círculo de pedras em volta da fogueira
+const stoneMaterial = new THREE.MeshStandardMaterial({
+  color: 0x5b5d63,
+  roughness: 0.95,
+  metalness: 0,
+  flatShading: true,
+});
+const STONE_COUNT = 12;
+for (let i = 0; i < STONE_COUNT; i++) {
+  const angle = (i / STONE_COUNT) * Math.PI * 2 + (Math.random() - 0.5) * 0.15;
+  const radius = 2.2 + Math.random() * 0.2;
+  const stone = new THREE.Mesh(
+    new THREE.DodecahedronGeometry(0.28 + Math.random() * 0.16, 0),
+    stoneMaterial,
+  );
+  stone.position.set(FIRE_BASE.x + Math.cos(angle) * radius, 0.1, FIRE_BASE.z + Math.sin(angle) * radius);
+  stone.scale.set(1, 0.65, 1);
+  stone.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+  stone.castShadow = true;
+  stone.receiveShadow = true;
+  scene.add(stone);
+}
+
+// --- Modelo da fogueira: chama emissiva e sem sombra -------------------------
+let flameMesh = null;
+
+function setupBonfire(bonfire) {
+  bonfire.traverse((child) => {
+    if (!child.isMesh || child.material?.name !== 'Fire') return;
+    flameMesh = child;
+    // A luz está dentro da chama: se ela projetasse sombra, bloquearia a própria luz.
+    child.castShadow = false;
+    child.receiveShadow = false;
+    const material = child.material;
+    material.emissive.set(0xffffff); // a cor vem do degradê no shader abaixo
+    material.emissiveIntensity = 1.2;
+    material.metalness = 0;
+    material.roughness = 1;
+
+    // Degradê na chama: amarelo perto da lenha, laranja no meio, vermelho na ponta.
+    // 0.0113 é a altura (no espaço do modelo) do topo da chama; o eixo "para cima" é o Z.
+    material.onBeforeCompile = (shader) => {
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying float vFlameHeight;')
+        .replace(
+          '#include <begin_vertex>',
+          '#include <begin_vertex>\nvFlameHeight = clamp( position.z / 0.0113, 0.0, 1.0 );',
+        );
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying float vFlameHeight;')
+        .replace(
+          '#include <emissivemap_fragment>',
+          `#include <emissivemap_fragment>
+           totalEmissiveRadiance *= mix( vec3( 1.0, 0.82, 0.32 ), vec3( 1.0, 0.2, 0.03 ), smoothstep( 0.0, 1.0, vFlameHeight ) );`,
+        );
+    };
+    material.needsUpdate = true;
+  });
+}
+
+const fireLightColor = new THREE.Color();
+
+// Chamado todo quadro (t = segundos desde o início, dt = delta).
+function updateFire(t, dt) {
+  const n = flicker(t);
+  const n2 = flicker(t, 4.2);
+  const n3 = flicker(t, 8.7);
+
+  // Luz: intensidade, cor e posição oscilam. Mexer um pouco na posição faz as
+  // sombras da lenha e das pedras "dançarem".
+  fireLight.intensity = FIRE_LIGHT_INTENSITY * (0.78 + 0.45 * n);
+  fireLight.position.set(
+    FIRE_BASE.x + (n2 - 0.5) * 0.12,
+    1.5 + (n - 0.5) * 0.15,
+    FIRE_BASE.z + (n3 - 0.5) * 0.12,
+  );
+  fireLight.color.copy(fireLightColor.setHSL(0.075 + 0.02 * n2, 1, 0.65));
+
+  // Chama: pulsa, balança e muda o brilho.
+  if (flameMesh) {
+    flameMesh.scale.set(1.06 - 0.12 * n, 1.06 - 0.12 * n2, 0.9 + 0.25 * n); // z = altura
+    flameMesh.rotation.set(0.04 * Math.sin(t * 2.3), 0.04 * Math.sin(t * 1.9 + 1), 0.12 * Math.sin(t * 1.7));
+    flameMesh.material.emissiveIntensity = 0.95 + 0.6 * n;
+  }
+
+  fireGlow.material.opacity = 0.45 + 0.25 * n;
+  fireGlow.scale.setScalar(7 * (0.9 + 0.2 * n2));
+
+  // Fagulhas
+  for (let i = 0; i < EMBER_COUNT; i++) {
+    const ember = embers[i];
+    ember.life += dt;
+    if (ember.life >= ember.maxLife) resetEmber(i);
+
+    const k = ember.life / ember.maxLife;
+    emberPositions[i * 3] += (ember.vx + Math.sin(t * 3 + i) * 0.35) * dt;
+    emberPositions[i * 3 + 1] += ember.vy * (1 - 0.35 * k) * dt;
+    emberPositions[i * 3 + 2] += (ember.vz + Math.cos(t * 2.6 + i * 1.7) * 0.35) * dt;
+
+    const fade = Math.pow(1 - k, 1.5) * (0.6 + 0.4 * Math.sin(t * 20 + i * 7));
+    const glow = fade * 2.6;
+    emberColors[i * 3] = glow;
+    emberColors[i * 3 + 1] = glow * (0.55 - 0.3 * k);
+    emberColors[i * 3 + 2] = glow * 0.12 * (1 - k);
+  }
+  emberPositionAttribute.needsUpdate = true;
+  emberColorAttribute.needsUpdate = true;
+
+  // Fumaça
+  for (const puff of smokePuffs) {
+    puff.life += dt;
+    if (puff.life >= puff.maxLife) resetSmoke(puff);
+
+    const k = puff.life / puff.maxLife;
+    puff.sprite.position.copy(puff.start).addScaledVector(puff.velocity, puff.life);
+    puff.sprite.scale.setScalar(0.9 + 3 * k);
+    puff.sprite.material.opacity = 0.3 * Math.sin(Math.PI * k);
+    puff.sprite.material.color.copy(SMOKE_WARM).lerp(SMOKE_COOL, Math.min(1, k * 2));
+  }
+}
 
 function prepareModel(model, options = {}) {
   const { position = new THREE.Vector3(0, 0, 0), rotationY = 0, scale = 1 } = options;
@@ -365,6 +631,7 @@ async function buildVillage() {
     rotationY: 0,
     scale: 1.5,
   });
+  setupBonfire(bonfire);
 
   const houses = await Promise.all([
     loadGLTF(houseModelUrl),
@@ -574,6 +841,7 @@ function applyDiagnostics() {
   linearDepthUniform.value = diag.depthRange;
   const depthMaterial = diag.depthMode === 'linear' ? linearDepthMaterial : rawDepthMaterial;
   scene.overrideMaterial = diag.depth ? depthMaterial : null;
+  fireEffects.visible = !diag.depth; // partículas não funcionam com o material de profundidade
   scene.background = diag.depth ? new THREE.Color(0x000000) : (skyTexture ?? SKY_COLOR);
 
   layoutInset();
@@ -683,6 +951,7 @@ function animate() {
   const delta = Math.min(timer.getDelta(), 0.1);
 
   updateMovement(delta);
+  updateFire(timer.getElapsed(), delta);
   render();
 }
 
