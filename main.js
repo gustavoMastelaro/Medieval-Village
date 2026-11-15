@@ -16,13 +16,12 @@ import houseModelUrl from './modelos/construcoes/House-nihGGju7DW.glb?url';
 import houseModelSimpleUrl from './modelos/construcoes/House.glb?url';
 import houseModelAltUrl from './modelos/construcoes/House-RSwoYSLblu.glb?url';
 import houseModelAlt2Url from './modelos/construcoes/House-YlADpCJU8U.glb?url';
-// Modelos de árvores e flores
+
+// Modelos de árvores, animais e da fogueira
 import treeModelUrl from './modelos/arvore/CommonTree_3.fbx?url';
 import treeModelAltUrl from './modelos/arvore/CommonTree_4.fbx?url';
 import treeModelAlt2Url from './modelos/arvore/CommonTree_5.fbx?url';
-import flowerModelUrl from './modelos/arvore/Flower_3_Group.fbx?url';
-import flowerModelAltUrl from './modelos/arvore/Flower_4_Group.fbx?url';
-// Modelos dos animais e da fogueira
+
 import animalModelUrl from './modelos/animal/Horse.fbx?url';
 import animalPugModelUrl from './modelos/animal/Pug.fbx?url';
 import bonfireModelUrl from './modelos/construcoes/bonfire.glb?url';
@@ -35,6 +34,9 @@ import dirtColorUrl from './texturas/terra_cor.jpg?url';
 import dirtNormalUrl from './texturas/terra_normal.png?url';
 import pathMaskUrl from './texturas/mascara_caminho.png?url';
 import plazaMaskUrl from './texturas/mascara_praca.png?url';
+
+//Para clonar os modelos, melhora o desempenho
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 // A cena começa com um fundo azul-escuro enquanto o HDR carrega
 const SKY_COLOR = new THREE.Color(0x071a36);
@@ -154,7 +156,7 @@ const fireLight = new THREE.PointLight(0xffa94d, 100, 25, 2);
 fireLight.position.set(0.05, 1.5, -0.09);
 fireLight.castShadow = true;
 // A resolução define o detalhe da sombra, e os ajustes de bias ajudam a evitar listras
-fireLight.shadow.mapSize.set(1024, 1024);
+fireLight.shadow.mapSize.set(512, 512);
 fireLight.shadow.bias = -0.003;
 fireLight.shadow.radius = 4;
 fireLight.shadow.normalBias = 0.03;
@@ -175,6 +177,8 @@ luzLua.castShadow = true;
 luzLua.shadow.mapSize.set(2048, 2048);
 luzLua.shadow.bias = -0.0015;
 luzLua.shadow.radius = 2;
+luzLua.shadow.autoUpdate = false;
+luzLua.shadow.mapSize.set(512, 512); 
 scene.add(luzLua);
 
 // Um pouco de luz ambiente evita que as áreas na sombra fiquem totalmente pretas
@@ -651,12 +655,10 @@ function updateFire(t, dt) {
 
 // Configura as malhas de um modelo, aplica suas transformações e coloca na cena
 function prepareModel(model, options = {}) {
-  const { position = new THREE.Vector3(0, 0, 0), rotationY = 0, scale = 1 } = options;
-
-  // Só as malhas recebem configuração de sombra e material
+  const { position = new THREE.Vector3(0, 0, 0), rotationY = 0, scale = 1, castShadow = true } = options;
   model.traverse((child) => {
     if (child.isMesh) {
-      child.castShadow = true;
+      child.castShadow = castShadow;
       child.receiveShadow = true;
 
       // Força a opacidade tanto nos modelos com um material quanto nos que usam vários
@@ -756,68 +758,63 @@ async function buildVillage() {
     placeHouse(house, HOUSE_POSITIONS[index], HOUSE_FRONT_AXES[index]);
   });
 
-  // Repete três modelos de árvore para preencher o entorno da vila
-  const trees = await Promise.all([
+  // Carrega as 3 variantes uma vez e clona para as 32 posições
+  const treeSources = await Promise.all([
     loadFBX(treeModelUrl),
     loadFBX(treeModelAltUrl),
     loadFBX(treeModelAlt2Url),
-    loadFBX(treeModelUrl),
-    loadFBX(treeModelAltUrl),
-    loadFBX(treeModelAlt2Url),
-    loadFBX(treeModelUrl),
-    loadFBX(treeModelAltUrl),
   ]);
+  const trees = Array.from({ length: 32 }, (_, index) =>
+    SkeletonUtils.clone(treeSources[index % treeSources.length]),
+  );
 
   const treePositions = [
-    new THREE.Vector3(-24, 0, -18),
-    new THREE.Vector3(-28, 0, 0),
-    new THREE.Vector3(-22, 0, 20),
-    new THREE.Vector3(-6, 0, 26),
-    new THREE.Vector3(10, 0, 25),
-    new THREE.Vector3(25, 0, 18),
-    new THREE.Vector3(26, 0, -16),
-    new THREE.Vector3(8, 0, -24),
+    new THREE.Vector3(-40, 0, -30),
+    new THREE.Vector3(-36, 0, -12),
+    new THREE.Vector3(-42, 0, 8),
+    new THREE.Vector3(-38, 0, 30),
+    new THREE.Vector3(-28, 0, 38),
+    new THREE.Vector3(-12, 0, 40),
+    new THREE.Vector3(6, 0, 38),
+    new THREE.Vector3(24, 0, 40),
+    new THREE.Vector3(38, 0, 28),
+    new THREE.Vector3(44, 0, 8),
+    new THREE.Vector3(40, 0, -18),
+    new THREE.Vector3(36, 0, -36),
+    new THREE.Vector3(18, 0, -42),
+    new THREE.Vector3(0, 0, -40),
+    new THREE.Vector3(-18, 0, -38),
+    new THREE.Vector3(-30, 0, -34),
+    new THREE.Vector3(-44, 0, -22),
+    new THREE.Vector3(-46, 0, 24),
+    new THREE.Vector3(-18, 0, 26),
+    new THREE.Vector3(14, 0, 26),
+    new THREE.Vector3(30, 0, 18),
+    new THREE.Vector3(42, 0, -2),
+    new THREE.Vector3(30, 0, -24),
+    new THREE.Vector3(10, 0, -28),
+    new THREE.Vector3(-8, 0, -28),
+    new THREE.Vector3(-24, 0, 12),
+    new THREE.Vector3(26, 0, 6),
+    new THREE.Vector3(22, 0, -12),
+    new THREE.Vector3(-22, 0, -12),
+    new THREE.Vector3(-12, 0, 18),
+    new THREE.Vector3(12, 0, 18),
+    new THREE.Vector3(0, 0, 30),
   ];
 
   // Varia a rotação e a escala das árvores para disfarçar a repetição
   trees.forEach((tree, index) => {
     prepareModel(tree, {
       position: treePositions[index],
-      rotationY: 0.4 + index * 0.5,
+      rotationY: 0.3 + index * 0.38,
       scale: 0.015 + (index % 3) * 0.001,
     });
   });
 
-  // Alterna dois modelos de flores e define quatro pontos no terreno
-  const flowers = await Promise.all([
-    loadFBX(flowerModelUrl),
-    loadFBX(flowerModelAltUrl),
-    loadFBX(flowerModelUrl),
-    loadFBX(flowerModelAltUrl),
-  ]);
-
-  const flowerPositions = [
-    new THREE.Vector3(6, 0, -6),
-    new THREE.Vector3(-6, 0, 7),
-    new THREE.Vector3(14, 0, 4),
-    new THREE.Vector3(-12, 0, -5),
-  ];
-
-  // Coloca cada grupo de flores com uma das duas rotações
-  flowers.forEach((flower, index) => {
-    prepareModel(flower, {
-      position: flowerPositions[index],
-      rotationY: index % 2 === 0 ? 0.3 : -0.7,
-      scale: 0.03,
-    });
-  });
-
   // Cria três cavalos a partir do mesmo modelo
-  const horses = await Promise.all([
-    loadFBX(animalModelUrl),
-    loadFBX(animalModelUrl),
-    loadFBX(animalModelUrl),
-  ]);
+  const horseSource = await loadFBX(animalModelUrl);
+  const horses = Array.from({ length: 3 }, () => SkeletonUtils.clone(horseSource));
 
   const horsePositions = [
     new THREE.Vector3(7, 0.1, 8),
@@ -835,12 +832,8 @@ async function buildVillage() {
   });
 
   // Usa quatro cópias do pug em pontos diferentes da vila
-  const dogs = await Promise.all([
-    loadFBX(animalPugModelUrl),
-    loadFBX(animalPugModelUrl),
-    loadFBX(animalPugModelUrl),
-    loadFBX(animalPugModelUrl),
-  ]);
+  const dogSource = await loadFBX(animalPugModelUrl);
+  const dogs = Array.from({ length: 4 }, () => SkeletonUtils.clone(dogSource));
 
   const dogPositions = [
     new THREE.Vector3(4, 0.1, 10),
@@ -1002,9 +995,10 @@ ui.showFrustum = gui.add(diag, 'showFrustum').name('4 · Frustum (visão de cima
 
 ui.frustumCulling = gui.add(diag, 'frustumCulling').name('5 · Frustum culling').onChange(applyDiagnostics);
 
-// Exibe as chamadas de desenho e os triângulos da renderização principal
-const stats = { drawCalls: 0, triangles: 0 };
+// Exibe o FPS, as chamadas de desenho e os triângulos da renderização principal
+const stats = { fps: 0, drawCalls: 0, triangles: 0 };
 const infoFolder = gui.addFolder('5 · renderer.info (câmera principal)');
+infoFolder.add(stats, 'fps').name('FPS').listen().disable();
 infoFolder.add(stats, 'drawCalls').name('Draw calls').listen().disable();
 infoFolder.add(stats, 'triangles').name('Triângulos').listen().disable();
 
@@ -1059,7 +1053,10 @@ buildVillage()
   .catch((error) => {
     console.error('Erro ao carregar os modelos do vilarejo:', error);
   })
-  .finally(applyDiagnostics);
+  .finally(() => {
+    applyDiagnostics();
+    luzLua.shadow.needsUpdate = true; // desenha a sombra da lua uma única vez
+  });
 
 // Desenha a câmera principal e, quando o painel estiver com essa opção ligada, a visão aérea
 function render() {
@@ -1093,13 +1090,25 @@ function render() {
   }
 }
 
-// Agenda o próximo quadro e atualiza o movimento e a fogueira antes de desenhar
+// Conta os quadros e atualiza o FPS a cada meio segundo para o número não ficar tremendo
+let fpsFrames = 0;
+let fpsTime = 0;
+
 function animate() {
   requestAnimationFrame(animate);
 
   timer.update();
-  // Limita o passo para evitar um salto grande ao voltar para a aba
-  const delta = Math.min(timer.getDelta(), 0.1);
+  // O FPS usa o tempo real, e o movimento usa o passo limitado
+  const rawDelta = timer.getDelta();
+  const delta = Math.min(rawDelta, 0.1);
+
+  fpsFrames++;
+  fpsTime += rawDelta;
+  if (fpsTime >= 0.5) {
+    stats.fps = Math.round(fpsFrames / fpsTime);
+    fpsFrames = 0;
+    fpsTime = 0;
+  }
 
   updateMovement(delta);
   updateFire(timer.getElapsed(), delta);
@@ -1115,6 +1124,6 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   frustumHelper.update();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   layoutInset();
 });
