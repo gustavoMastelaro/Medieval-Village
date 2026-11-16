@@ -1,42 +1,42 @@
 // Vila medieval em Three.js que dá para explorar em primeira pessoa
 
 // O Three.js cuida da cena, da câmera e da renderização
-import * as THREE from 'three';
+import * as THREE from "three";
 // O PointerLockControls usa o mouse para virar a câmera
-import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
+import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 // Os loaders abrem os modelos GLB e FBX e a imagem HDR do céu
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
-import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
+import { HDRLoader } from "three/examples/jsm/loaders/HDRLoader.js";
 // A GUI cria o painel de diagnóstico
-import { GUI } from 'three/examples/jsm/libs/lil-gui.module.min.js';
+import { GUI } from "three/examples/jsm/libs/lil-gui.module.min.js";
 
 // O ?url faz o Vite entregar o endereço de cada arquivo para o loader
-import houseModelUrl from './modelos/construcoes/House-nihGGju7DW.glb?url';
-import houseModelSimpleUrl from './modelos/construcoes/House.glb?url';
-import houseModelAltUrl from './modelos/construcoes/House-RSwoYSLblu.glb?url';
-import houseModelAlt2Url from './modelos/construcoes/House-YlADpCJU8U.glb?url';
+import houseModelUrl from "./modelos/construcoes/House-nihGGju7DW.glb?url";
+import houseModelSimpleUrl from "./modelos/construcoes/House.glb?url";
+import houseModelAltUrl from "./modelos/construcoes/House-RSwoYSLblu.glb?url";
+import houseModelAlt2Url from "./modelos/construcoes/House-YlADpCJU8U.glb?url";
 
 // Modelos de árvores, animais e da fogueira
-import treeModelUrl from './modelos/arvore/CommonTree_3.fbx?url';
-import treeModelAltUrl from './modelos/arvore/CommonTree_4.fbx?url';
-import treeModelAlt2Url from './modelos/arvore/CommonTree_5.fbx?url';
+import treeModelUrl from "./modelos/arvore/CommonTree_3.fbx?url";
+import treeModelAltUrl from "./modelos/arvore/CommonTree_4.fbx?url";
+import treeModelAlt2Url from "./modelos/arvore/CommonTree_5.fbx?url";
 
-import animalModelUrl from './modelos/animal/Horse.fbx?url';
-import animalPugModelUrl from './modelos/animal/Pug.fbx?url';
-import bonfireModelUrl from './modelos/construcoes/bonfire.glb?url';
+import animalModelUrl from "./modelos/animal/Horse.fbx?url";
+import animalPugModelUrl from "./modelos/animal/Pug.fbx?url";
+import bonfireModelUrl from "./modelos/construcoes/bonfire.glb?url";
 
 // Imagem do céu, texturas do chão e máscaras das bordas da terra
-import skyHdrUrl from './texturas/ceu_estrelado_2k.hdr?url';
-import grassColorUrl from './texturas/grama_cor.jpg?url';
-import grassNormalUrl from './texturas/grama_normal.png?url';
-import dirtColorUrl from './texturas/terra_cor.jpg?url';
-import dirtNormalUrl from './texturas/terra_normal.png?url';
-import pathMaskUrl from './texturas/mascara_caminho.png?url';
-import plazaMaskUrl from './texturas/mascara_praca.png?url';
+import skyHdrUrl from "./texturas/ceu_estrelado_2k.hdr?url";
+import grassColorUrl from "./texturas/grama_cor.jpg?url";
+import grassNormalUrl from "./texturas/grama_normal.png?url";
+import dirtColorUrl from "./texturas/terra_cor.jpg?url";
+import dirtNormalUrl from "./texturas/terra_normal.png?url";
+import pathMaskUrl from "./texturas/mascara_caminho.png?url";
+import plazaMaskUrl from "./texturas/mascara_praca.png?url";
 
 //Para clonar os modelos, melhora o desempenho
-import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
+import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils.js";
 
 // A cena começa com um fundo azul-escuro enquanto o HDR carrega
 const SKY_COLOR = new THREE.Color(0x071a36);
@@ -59,7 +59,10 @@ camera.lookAt(0, EYE_HEIGHT, 0);
 
 // O antialiasing suaviza as bordas, e o limite de pixel ratio reduz o custo em telas de alta resolução
 const MAX_PIXEL_RATIO = 1.5;
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  powerPreference: "high-performance",
+});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
 renderer.setSize(window.innerWidth, window.innerHeight);
 // Ativa sombras com filtragem para suavizar as bordas
@@ -73,37 +76,43 @@ document.body.appendChild(renderer.domElement);
 const controls = new PointerLockControls(camera, renderer.domElement);
 scene.add(controls.object);
 
-renderer.domElement.addEventListener('click', () => controls.lock());
+renderer.domElement.addEventListener("click", () => controls.lock());
 
 // Guarda as teclas pressionadas para consultar durante a animação
-const keys = { forward: false, back: false, left: false, right: false, run: false };
+const keys = {
+  forward: false,
+  back: false,
+  left: false,
+  right: false,
+  run: false,
+};
 
 // Atualiza a direção ou a corrida conforme a tecla e indica se ela foi tratada
 function setKey(code, pressed) {
   switch (code) {
     // W e seta para cima fazem o mesmo movimento
-    case 'KeyW':
-    case 'ArrowUp':
+    case "KeyW":
+    case "ArrowUp":
       keys.forward = pressed;
       break;
     // S e seta para baixo andam para trás
-    case 'KeyS':
-    case 'ArrowDown':
+    case "KeyS":
+    case "ArrowDown":
       keys.back = pressed;
       break;
     // A e seta para a esquerda movem o jogador de lado
-    case 'KeyA':
-    case 'ArrowLeft':
+    case "KeyA":
+    case "ArrowLeft":
       keys.left = pressed;
       break;
     // D e seta para a direita movem para o outro lado
-    case 'KeyD':
-    case 'ArrowRight':
+    case "KeyD":
+    case "ArrowRight":
       keys.right = pressed;
       break;
     // Qualquer um dos dois Shift ativa a corrida
-    case 'ShiftLeft':
-    case 'ShiftRight':
+    case "ShiftLeft":
+    case "ShiftRight":
       keys.run = pressed;
       break;
     // As outras teclas podem ser tratadas pelos atalhos do painel
@@ -211,7 +220,7 @@ const HOUSE_POSITIONS = [
 ];
 
 // A porta da quarta casa fica no +X do modelo, enquanto as outras ficam no +Z
-const HOUSE_FRONT_AXES = ['z', 'z', 'z', 'x', 'z', 'z'];
+const HOUSE_FRONT_AXES = ["z", "z", "z", "x", "z", "z"];
 
 const HOUSE_SCALE = 8.8;
 const DOOR_GAP = 0.4; // Folga entre o fim do caminho e a fachada
@@ -272,7 +281,7 @@ const groundMaterial = new THREE.MeshStandardMaterial({
 groundMaterial.onBeforeCompile = (shader) => {
   // Usa a mesma textura em uma escala maior para criar manchas claras e escuras
   shader.fragmentShader = shader.fragmentShader.replace(
-    '#include <map_fragment>',
+    "#include <map_fragment>",
     `#include <map_fragment>
      float macro = texture2D( map, vMapUv * 0.037 ).g;
      diffuseColor.rgb *= mix( 0.78, 1.18, smoothstep( 0.22, 0.33, macro ) );`,
@@ -280,7 +289,10 @@ groundMaterial.onBeforeCompile = (shader) => {
 };
 
 // Deita um disco no chão e permite que ele receba as sombras da vila
-const ground = new THREE.Mesh(new THREE.CircleGeometry(GROUND_RADIUS, 96), groundMaterial);
+const ground = new THREE.Mesh(
+  new THREE.CircleGeometry(GROUND_RADIUS, 96),
+  groundMaterial,
+);
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
@@ -313,7 +325,7 @@ function addDirtPatch(width, depth, material, position, rotationY = 0) {
   const geometry = new THREE.PlaneGeometry(width, depth);
   geometry.rotateX(-Math.PI / 2);
   // Guarda os UVs originais para a máscara cobrir a área inteira
-  geometry.setAttribute('uv1', geometry.attributes.uv.clone());
+  geometry.setAttribute("uv1", geometry.attributes.uv.clone());
 
   const patch = new THREE.Mesh(geometry, material);
   patch.position.copy(position);
@@ -336,11 +348,19 @@ function addDirtPatch(width, depth, material, position, rotationY = 0) {
 }
 
 // Coloca a praça no centro, um pouco acima da grama
-addDirtPatch(PLAZA_RADIUS * 2, PLAZA_RADIUS * 2, plazaMaterial, new THREE.Vector3(0, 0.02, 0));
+addDirtPatch(
+  PLAZA_RADIUS * 2,
+  PLAZA_RADIUS * 2,
+  plazaMaterial,
+  new THREE.Vector3(0, 0.02, 0),
+);
 
 // Cria um caminho reto da praça até a distância indicada na direção da casa
 function addHousePath(housePosition, endDistance) {
-  const direction = new THREE.Vector2(housePosition.x, housePosition.z).normalize();
+  const direction = new THREE.Vector2(
+    housePosition.x,
+    housePosition.z,
+  ).normalize();
   const length = endDistance - PATH_START;
   // O plano é posicionado pelo centro, então usamos o meio do trecho
   const middle = (PATH_START + endDistance) / 2;
@@ -371,7 +391,7 @@ new HDRLoader()
   })
   .catch((error) => {
     // Se o HDR falhar, a cena continua com o fundo azul
-    console.error('Erro ao carregar o HDR do céu:', error);
+    console.error("Erro ao carregar o HDR do céu:", error);
   });
 
 // Posição de referência da fogueira e intensidade média da luz
@@ -385,10 +405,17 @@ scene.add(fireEffects);
 // Desenha um degradê circular em um canvas e devolve a textura pronta para usar
 function createSoftTexture(stops) {
   const size = 128;
-  const canvas = document.createElement('canvas');
+  const canvas = document.createElement("canvas");
   canvas.width = canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  const ctx = canvas.getContext("2d");
+  const gradient = ctx.createRadialGradient(
+    size / 2,
+    size / 2,
+    0,
+    size / 2,
+    size / 2,
+    size / 2,
+  );
   // Cada par informa em que ponto do degradê a cor deve aparecer
   stops.forEach(([offset, color]) => gradient.addColorStop(offset, color));
   ctx.fillStyle = gradient;
@@ -400,20 +427,20 @@ function createSoftTexture(stops) {
 
 // O brilho tem centro forte, as fagulhas têm um núcleo mais definido e a fumaça é mais difusa
 const glowTexture = createSoftTexture([
-  [0, 'rgba(255,255,255,1)'],
-  [0.25, 'rgba(255,255,255,0.55)'],
-  [1, 'rgba(255,255,255,0)'],
+  [0, "rgba(255,255,255,1)"],
+  [0.25, "rgba(255,255,255,0.55)"],
+  [1, "rgba(255,255,255,0)"],
 ]);
 const emberTexture = createSoftTexture([
-  [0, 'rgba(255,255,255,1)'],
-  [0.3, 'rgba(255,255,255,0.9)'],
-  [0.65, 'rgba(255,255,255,0.25)'],
-  [1, 'rgba(255,255,255,0)'],
+  [0, "rgba(255,255,255,1)"],
+  [0.3, "rgba(255,255,255,0.9)"],
+  [0.65, "rgba(255,255,255,0.25)"],
+  [1, "rgba(255,255,255,0)"],
 ]);
 const smokeTexture = createSoftTexture([
-  [0, 'rgba(255,255,255,0.9)'],
-  [0.5, 'rgba(255,255,255,0.35)'],
-  [1, 'rgba(255,255,255,0)'],
+  [0, "rgba(255,255,255,0.9)"],
+  [0.5, "rgba(255,255,255,0.35)"],
+  [1, "rgba(255,255,255,0)"],
 ]);
 
 // Combina três oscilações para o fogo tremular com um ritmo irregular
@@ -466,9 +493,11 @@ function resetEmber(i, ageFraction = 0) {
   ember.vy = 0.9 + Math.random() * 1.3;
   ember.vz = (Math.random() - 0.5) * 0.5;
   // A idade inicial também desloca a partícula, como se ela já estivesse subindo
-  emberPositions[i * 3] = FIRE_BASE.x + Math.cos(angle) * radius + ember.vx * ember.life;
+  emberPositions[i * 3] =
+    FIRE_BASE.x + Math.cos(angle) * radius + ember.vx * ember.life;
   emberPositions[i * 3 + 1] = 0.8 + Math.random() * 0.9 + ember.vy * ember.life;
-  emberPositions[i * 3 + 2] = FIRE_BASE.z + Math.sin(angle) * radius + ember.vz * ember.life;
+  emberPositions[i * 3 + 2] =
+    FIRE_BASE.z + Math.sin(angle) * radius + ember.vz * ember.life;
 }
 // Espalha as idades das fagulhas para elas já aparecerem em alturas diferentes
 for (let i = 0; i < EMBER_COUNT; i++) resetEmber(i, Math.random());
@@ -479,8 +508,8 @@ const emberPositionAttribute = new THREE.BufferAttribute(emberPositions, 3);
 const emberColorAttribute = new THREE.BufferAttribute(emberColors, 3);
 emberPositionAttribute.setUsage(THREE.DynamicDrawUsage);
 emberColorAttribute.setUsage(THREE.DynamicDrawUsage);
-emberGeometry.setAttribute('position', emberPositionAttribute);
-emberGeometry.setAttribute('color', emberColorAttribute);
+emberGeometry.setAttribute("position", emberPositionAttribute);
+emberGeometry.setAttribute("color", emberColorAttribute);
 
 // Desenha as fagulhas como pontos luminosos com cor individual
 const emberPoints = new THREE.Points(
@@ -511,7 +540,11 @@ function resetSmoke(puff, ageFraction = 0) {
   puff.maxLife = 5 + Math.random() * 3;
   puff.life = ageFraction * puff.maxLife;
   // Além de subir, a fumaça se desloca um pouco de lado
-  puff.velocity.set(0.25 + Math.random() * 0.2, 0.8 + Math.random() * 0.5, (Math.random() - 0.5) * 0.3);
+  puff.velocity.set(
+    0.25 + Math.random() * 0.2,
+    0.8 + Math.random() * 0.5,
+    (Math.random() - 0.5) * 0.3,
+  );
   puff.start.set(
     FIRE_BASE.x + (Math.random() - 0.5) * 0.8,
     2.8,
@@ -532,7 +565,13 @@ for (let i = 0; i < SMOKE_COUNT; i++) {
   );
   sprite.material.rotation = Math.random() * Math.PI * 2;
   fireEffects.add(sprite);
-  const puff = { sprite, life: 0, maxLife: 1, velocity: new THREE.Vector3(), start: new THREE.Vector3() };
+  const puff = {
+    sprite,
+    life: 0,
+    maxLife: 1,
+    velocity: new THREE.Vector3(),
+    start: new THREE.Vector3(),
+  };
   resetSmoke(puff, Math.random());
   smokePuffs.push(puff);
 }
@@ -553,7 +592,11 @@ for (let i = 0; i < STONE_COUNT; i++) {
     new THREE.DodecahedronGeometry(0.28 + Math.random() * 0.16, 0),
     stoneMaterial,
   );
-  stone.position.set(FIRE_BASE.x + Math.cos(angle) * radius, 0.1, FIRE_BASE.z + Math.sin(angle) * radius);
+  stone.position.set(
+    FIRE_BASE.x + Math.cos(angle) * radius,
+    0.1,
+    FIRE_BASE.z + Math.sin(angle) * radius,
+  );
   stone.scale.set(1, 0.65, 1);
   stone.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
   stone.castShadow = true;
@@ -573,7 +616,11 @@ function buildWall() {
   const perRow = Math.round((2 * Math.PI * WALL_RADIUS) / BLOCK_LENGTH);
 
   // O eixo Z do bloco é o comprimento, e fica na direção do muro depois da rotação
-  const geometry = new THREE.BoxGeometry(BLOCK_THICKNESS, BLOCK_HEIGHT, BLOCK_LENGTH * 1.05);
+  const geometry = new THREE.BoxGeometry(
+    BLOCK_THICKNESS,
+    BLOCK_HEIGHT,
+    BLOCK_LENGTH * 1.05,
+  );
   const material = new THREE.MeshStandardMaterial({
     color: 0xffffff, // A cor real vem de cada instância
     roughness: 0.95,
@@ -601,12 +648,19 @@ function buildWall() {
       );
       // Gira o bloco para o comprimento acompanhar a curva, com um desvio pequeno
       dummy.rotation.set(0, -angle + (Math.random() - 0.5) * 0.08, 0);
-      dummy.scale.set(0.95 + Math.random() * 0.15, 1, 0.9 + Math.random() * 0.2);
+      dummy.scale.set(
+        0.95 + Math.random() * 0.15,
+        1,
+        0.9 + Math.random() * 0.2,
+      );
       dummy.updateMatrix();
 
       wall.setMatrixAt(index, dummy.matrix);
       // Cada pedra recebe um tom de cinza ligeiramente diferente
-      wall.setColorAt(index, color.setHSL(0.6, 0.04, 0.35 + Math.random() * 0.15));
+      wall.setColorAt(
+        index,
+        color.setHSL(0.6, 0.04, 0.35 + Math.random() * 0.15),
+      );
       index++;
     }
   }
@@ -644,8 +698,8 @@ const fireflyPositionAttribute = new THREE.BufferAttribute(fireflyPositions, 3);
 const fireflyColorAttribute = new THREE.BufferAttribute(fireflyColors, 3);
 fireflyPositionAttribute.setUsage(THREE.DynamicDrawUsage);
 fireflyColorAttribute.setUsage(THREE.DynamicDrawUsage);
-fireflyGeometry.setAttribute('position', fireflyPositionAttribute);
-fireflyGeometry.setAttribute('color', fireflyColorAttribute);
+fireflyGeometry.setAttribute("position", fireflyPositionAttribute);
+fireflyGeometry.setAttribute("color", fireflyColorAttribute);
 
 const fireflyPoints = new THREE.Points(
   fireflyGeometry,
@@ -694,7 +748,7 @@ let flameMesh = null;
 // Procura o material Fire no modelo e prepara a malha da chama para a animação
 function setupBonfire(bonfire) {
   bonfire.traverse((child) => {
-    if (!child.isMesh || child.material?.name !== 'Fire') return;
+    if (!child.isMesh || child.material?.name !== "Fire") return;
     flameMesh = child;
     // A fonte de luz fica dentro da chama, então a própria malha bloquearia a iluminação
     child.castShadow = false;
@@ -710,16 +764,22 @@ function setupBonfire(bonfire) {
     material.onBeforeCompile = (shader) => {
       // A altura local da chama está no eixo Z e vai até 0.0113 nesse modelo
       shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', '#include <common>\nvarying float vFlameHeight;')
         .replace(
-          '#include <begin_vertex>',
-          '#include <begin_vertex>\nvFlameHeight = clamp( position.z / 0.0113, 0.0, 1.0 );',
+          "#include <common>",
+          "#include <common>\nvarying float vFlameHeight;",
+        )
+        .replace(
+          "#include <begin_vertex>",
+          "#include <begin_vertex>\nvFlameHeight = clamp( position.z / 0.0113, 0.0, 1.0 );",
         );
       // A altura calculada nos vértices controla a mistura de cores na superfície
       shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying float vFlameHeight;')
         .replace(
-          '#include <emissivemap_fragment>',
+          "#include <common>",
+          "#include <common>\nvarying float vFlameHeight;",
+        )
+        .replace(
+          "#include <emissivemap_fragment>",
           `#include <emissivemap_fragment>
            totalEmissiveRadiance *= mix( vec3( 1.0, 0.82, 0.32 ), vec3( 1.0, 0.2, 0.03 ), smoothstep( 0.0, 1.0, vFlameHeight ) );`,
         );
@@ -750,7 +810,11 @@ function updateFire(t, dt) {
   // Depois que o modelo carrega, a chama muda de tamanho, inclinação e brilho
   if (flameMesh) {
     flameMesh.scale.set(1.06 - 0.12 * n, 1.06 - 0.12 * n2, 0.9 + 0.25 * n);
-    flameMesh.rotation.set(0.04 * Math.sin(t * 2.3), 0.04 * Math.sin(t * 1.9 + 1), 0.12 * Math.sin(t * 1.7));
+    flameMesh.rotation.set(
+      0.04 * Math.sin(t * 2.3),
+      0.04 * Math.sin(t * 1.9 + 1),
+      0.12 * Math.sin(t * 1.7),
+    );
     flameMesh.material.emissiveIntensity = 0.95 + 0.6 * n;
   }
 
@@ -768,7 +832,8 @@ function updateFire(t, dt) {
     const k = ember.life / ember.maxLife;
     emberPositions[i * 3] += (ember.vx + Math.sin(t * 3 + i) * 0.35) * dt;
     emberPositions[i * 3 + 1] += ember.vy * (1 - 0.35 * k) * dt;
-    emberPositions[i * 3 + 2] += (ember.vz + Math.cos(t * 2.6 + i * 1.7) * 0.35) * dt;
+    emberPositions[i * 3 + 2] +=
+      (ember.vz + Math.cos(t * 2.6 + i * 1.7) * 0.35) * dt;
 
     // Mistura a perda gradual de brilho com pequenas cintilações
     const fade = Math.pow(1 - k, 1.5) * (0.6 + 0.4 * Math.sin(t * 20 + i * 7));
@@ -787,17 +852,26 @@ function updateFire(t, dt) {
     if (puff.life >= puff.maxLife) resetSmoke(puff);
 
     const k = puff.life / puff.maxLife;
-    puff.sprite.position.copy(puff.start).addScaledVector(puff.velocity, puff.life);
+    puff.sprite.position
+      .copy(puff.start)
+      .addScaledVector(puff.velocity, puff.life);
     puff.sprite.scale.setScalar(0.9 + 3 * k);
     // A opacidade sobe e depois volta a zero ao longo da vida da partícula
     puff.sprite.material.opacity = 0.3 * Math.sin(Math.PI * k);
-    puff.sprite.material.color.copy(SMOKE_WARM).lerp(SMOKE_COOL, Math.min(1, k * 2));
+    puff.sprite.material.color
+      .copy(SMOKE_WARM)
+      .lerp(SMOKE_COOL, Math.min(1, k * 2));
   }
 }
 
 // Configura as malhas de um modelo, aplica suas transformações e coloca na cena
 function prepareModel(model, options = {}) {
-  const { position = new THREE.Vector3(0, 0, 0), rotationY = 0, scale = 1, castShadow = true } = options;
+  const {
+    position = new THREE.Vector3(0, 0, 0),
+    rotationY = 0,
+    scale = 1,
+    castShadow = true,
+  } = options;
   model.traverse((child) => {
     if (child.isMesh) {
       child.castShadow = castShadow;
@@ -842,18 +916,30 @@ function placeHouse(house, centerTarget, frontAxis) {
   const size = box.getSize(new THREE.Vector3());
 
   // O vetor aponta da casa para a fogueira, e a fórmula do ângulo depende do eixo da porta
-  const toFire = new THREE.Vector2(-centerTarget.x, -centerTarget.z).normalize();
+  const toFire = new THREE.Vector2(
+    -centerTarget.x,
+    -centerTarget.z,
+  ).normalize();
   const rotationY =
-    frontAxis === 'x' ? Math.atan2(-toFire.y, toFire.x) : Math.atan2(toFire.x, toFire.y);
+    frontAxis === "x"
+      ? Math.atan2(-toFire.y, toFire.x)
+      : Math.atan2(toFire.x, toFire.y);
 
   // Gira o deslocamento do pivô e desconta esse valor para alinhar o centro da casa
-  const offset = new THREE.Vector3(center.x, 0, center.z).applyAxisAngle(THREE.Object3D.DEFAULT_UP, rotationY);
-  const position = new THREE.Vector3(centerTarget.x - offset.x, 0, centerTarget.z - offset.z);
+  const offset = new THREE.Vector3(center.x, 0, center.z).applyAxisAngle(
+    THREE.Object3D.DEFAULT_UP,
+    rotationY,
+  );
+  const position = new THREE.Vector3(
+    centerTarget.x - offset.x,
+    0,
+    centerTarget.z - offset.z,
+  );
 
   prepareModel(house, { position, rotationY, scale: HOUSE_SCALE });
 
   // Desconta metade da profundidade e a folga para o caminho terminar antes da fachada
-  const halfDepth = (frontAxis === 'x' ? size.x : size.z) / 2;
+  const halfDepth = (frontAxis === "x" ? size.x : size.z) / 2;
   const distanceToFire = Math.hypot(centerTarget.x, centerTarget.z);
   addHousePath(centerTarget, distanceToFire - halfDepth - DOOR_GAP);
 }
@@ -872,6 +958,26 @@ function loadFBX(url) {
     const loader = new FBXLoader();
     loader.load(url, (model) => resolve(model), undefined, reject);
   });
+}
+
+// Guarda um mixer por animal para tocar as animações dos modelos
+const animalMixers = [];
+const ANIMATION_RANGE = 40; // Só anima os animais a até 40 unidades do jogador
+
+// Procura o clipe pelo nome (idle, walk, run, jump) e começa a tocar em um ponto aleatório
+function playAnimation(source, animal, name) {
+  const clip =
+    source.animations.find((c) => c.name.toLowerCase().includes(name)) ??
+    source.animations[0];
+  if (!clip) return;
+
+  const mixer = new THREE.AnimationMixer(animal);
+  const action = mixer.clipAction(clip);
+  // Cada animal começa em um ponto e em uma velocidade um pouco diferentes
+  action.time = Math.random() * clip.duration;
+  action.timeScale = 0.9 + Math.random() * 0.2;
+  action.play();
+  animalMixers.push({ mixer, animal });
 }
 
 // Carrega e distribui os modelos que formam a vila
@@ -961,7 +1067,9 @@ async function buildVillage() {
 
   // Cria três cavalos a partir do mesmo modelo
   const horseSource = await loadFBX(animalModelUrl);
-  const horses = Array.from({ length: 3 }, () => SkeletonUtils.clone(horseSource));
+  const horses = Array.from({ length: 3 }, () =>
+    SkeletonUtils.clone(horseSource),
+  );
 
   const horsePositions = [
     new THREE.Vector3(7, 0.1, 8),
@@ -976,6 +1084,8 @@ async function buildVillage() {
       rotationY: index === 0 ? -0.9 : 0.7,
       scale: 0.003,
     });
+
+    playAnimation(horseSource, horse, "idle");
   });
 
   // Usa quatro cópias do pug em pontos diferentes da vila
@@ -996,6 +1106,8 @@ async function buildVillage() {
       rotationY: index % 2 === 0 ? 0.6 : -0.9,
       scale: 0.004,
     });
+
+    playAnimation(dogSource, dog, "idle");
   });
 }
 
@@ -1003,7 +1115,7 @@ async function buildVillage() {
 const diag = {
   wireframe: false, // Mostra a malha pelos contornos dos triângulos
   depth: false, // Ativa a visualização da profundidade
-  depthMode: 'linear', // Alterna entre distância linear e valor do z-buffer
+  depthMode: "linear", // Alterna entre distância linear e valor do z-buffer
   depthRange: 60, // Distância em que o modo linear chega ao preto
   backFaceCulling: true, // Descarta o verso das faces
   showFrustum: false, // Mostra a visão aérea com o volume visível da câmera
@@ -1020,13 +1132,15 @@ linearDepthMaterial.onBeforeCompile = (shader) => {
   // Procura a expressão de cor do shader padrão e troca pelo cálculo linear
   const patched = shader.fragmentShader.replace(
     /gl_FragColor\s*=\s*vec4\(\s*vec3\(\s*1\.0\s*-\s*fragCoordZ\s*\)\s*,\s*opacity\s*\)\s*;/,
-    'gl_FragColor = vec4( vec3( 1.0 - clamp( vHighPrecisionZW[ 1 ] / uMaxDist, 0.0, 1.0 ) ), opacity );',
+    "gl_FragColor = vec4( vec3( 1.0 - clamp( vHighPrecisionZW[ 1 ] / uMaxDist, 0.0, 1.0 ) ), opacity );",
   );
   // Avisa no console se a versão do Three.js usar outra expressão
   if (patched === shader.fragmentShader) {
-    console.warn('Profundidade linear indisponível nesta versão do Three.js; use o modo z-buffer.');
+    console.warn(
+      "Profundidade linear indisponível nesta versão do Three.js; use o modo z-buffer.",
+    );
   }
-  shader.fragmentShader = 'uniform float uMaxDist;\n' + patched;
+  shader.fragmentShader = "uniform float uMaxDist;\n" + patched;
 };
 
 // Desenha o contorno do volume que a câmera principal consegue enxergar
@@ -1041,20 +1155,20 @@ topCamera.position.set(0, 75, 0);
 topCamera.lookAt(0, 0, 0);
 
 // Adiciona a moldura e o texto da visão aérea sobre o canvas
-const insetFrame = document.createElement('div');
-insetFrame.textContent = 'Visão de cima: frustum da câmera';
+const insetFrame = document.createElement("div");
+insetFrame.textContent = "Visão de cima: frustum da câmera";
 Object.assign(insetFrame.style, {
-  position: 'fixed',
-  display: 'none',
-  boxSizing: 'border-box',
-  border: '2px solid #fff',
-  boxShadow: '0 0 6px rgba(0,0,0,0.6)',
-  color: '#fff',
-  font: '12px sans-serif',
-  textShadow: '0 0 3px #000',
-  padding: '3px 6px',
-  pointerEvents: 'none', // Deixa os cliques passarem para a cena
-  zIndex: '5',
+  position: "fixed",
+  display: "none",
+  boxSizing: "border-box",
+  border: "2px solid #fff",
+  boxShadow: "0 0 6px rgba(0,0,0,0.6)",
+  color: "#fff",
+  font: "12px sans-serif",
+  textShadow: "0 0 3px #000",
+  padding: "3px 6px",
+  pointerEvents: "none", // Deixa os cliques passarem para a cena
+  zIndex: "5",
 });
 document.body.appendChild(insetFrame);
 
@@ -1063,7 +1177,9 @@ const INSET_MARGIN = 12;
 // Calcula o tamanho e a posição do quadro da visão aérea no canvas
 function getInsetRect() {
   // O lado do quadrado usa a menor dimensão da janela como referência
-  const size = Math.round(Math.min(window.innerWidth, window.innerHeight) * 0.36);
+  const size = Math.round(
+    Math.min(window.innerWidth, window.innerHeight) * 0.36,
+  );
   return {
     size,
     x: window.innerWidth - size - INSET_MARGIN,
@@ -1079,7 +1195,7 @@ function layoutInset() {
     height: `${r.size}px`,
     right: `${INSET_MARGIN}px`,
     bottom: `${INSET_MARGIN}px`,
-    display: diag.showFrustum ? 'block' : 'none',
+    display: diag.showFrustum ? "block" : "none",
   });
 }
 
@@ -1093,7 +1209,9 @@ function applyDiagnostics() {
 
     obj.frustumCulled = diag.frustumCulling;
 
-    const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
+    const materials = Array.isArray(obj.material)
+      ? obj.material
+      : [obj.material];
     for (const m of materials) {
       m.wireframe = diag.wireframe;
       m.side = side;
@@ -1108,74 +1226,97 @@ function applyDiagnostics() {
 
   // Escolhe o material de profundidade e configura o alcance do modo linear
   linearDepthUniform.value = diag.depthRange;
-  const depthMaterial = diag.depthMode === 'linear' ? linearDepthMaterial : rawDepthMaterial;
+  const depthMaterial =
+    diag.depthMode === "linear" ? linearDepthMaterial : rawDepthMaterial;
   scene.overrideMaterial = diag.depth ? depthMaterial : null;
   // No modo de profundidade, a cena fica com fundo preto e sem os efeitos da fogueira
   fireEffects.visible = !diag.depth;
   fireflyGroup.visible = !diag.depth;
-  scene.background = diag.depth ? new THREE.Color(0x000000) : (skyTexture ?? SKY_COLOR);
+  scene.background = diag.depth
+    ? new THREE.Color(0x000000)
+    : (skyTexture ?? SKY_COLOR);
 
   layoutInset();
 }
 
 // Guarda os controles da GUI que também precisam ser atualizados pelos atalhos
-const gui = new GUI({ title: 'Modo diagnóstico' });
+const gui = new GUI({ title: "Modo diagnóstico" });
 const ui = {};
 
-ui.wireframe = gui.add(diag, 'wireframe').name('1 · Wireframe').onChange(applyDiagnostics);
+ui.wireframe = gui
+  .add(diag, "wireframe")
+  .name("1 · Wireframe")
+  .onChange(applyDiagnostics);
 
 // Reúne o botão da profundidade, a escolha do modo e o alcance linear
-const depthFolder = gui.addFolder('2 · Profundidade (z-buffer)');
-ui.depth = depthFolder.add(diag, 'depth').name('Ativar').onChange(applyDiagnostics);
-depthFolder
-  .add(diag, 'depthMode', { 'Linear (didático)': 'linear', 'z-buffer bruto': 'raw' })
-  .name('Modo')
+const depthFolder = gui.addFolder("2 · Profundidade (z-buffer)");
+ui.depth = depthFolder
+  .add(diag, "depth")
+  .name("Ativar")
   .onChange(applyDiagnostics);
-depthFolder.add(diag, 'depthRange', 10, 200, 1).name('Alcance linear').onChange(applyDiagnostics);
+depthFolder
+  .add(diag, "depthMode", {
+    "Linear (didático)": "linear",
+    "z-buffer bruto": "raw",
+  })
+  .name("Modo")
+  .onChange(applyDiagnostics);
+depthFolder
+  .add(diag, "depthRange", 10, 200, 1)
+  .name("Alcance linear")
+  .onChange(applyDiagnostics);
 
 // Cada mudança de visibilidade é aplicada na hora
 ui.backFaceCulling = gui
-  .add(diag, 'backFaceCulling')
-  .name('3 · Back-face culling')
+  .add(diag, "backFaceCulling")
+  .name("3 · Back-face culling")
   .onChange(applyDiagnostics);
 
-ui.showFrustum = gui.add(diag, 'showFrustum').name('4 · Frustum (visão de cima)').onChange(applyDiagnostics);
+ui.showFrustum = gui
+  .add(diag, "showFrustum")
+  .name("4 · Frustum (visão de cima)")
+  .onChange(applyDiagnostics);
 
-ui.frustumCulling = gui.add(diag, 'frustumCulling').name('5 · Frustum culling').onChange(applyDiagnostics);
+ui.frustumCulling = gui
+  .add(diag, "frustumCulling")
+  .name("5 · Frustum culling")
+  .onChange(applyDiagnostics);
 
 // Exibe o FPS, as chamadas de desenho e os triângulos da renderização principal
 const stats = { fps: 0, drawCalls: 0, triangles: 0 };
-const infoFolder = gui.addFolder('5 · renderer.info (câmera principal)');
-infoFolder.add(stats, 'fps').name('FPS').listen().disable();
-infoFolder.add(stats, 'drawCalls').name('Draw calls').listen().disable();
-infoFolder.add(stats, 'triangles').name('Triângulos').listen().disable();
+const infoFolder = gui.addFolder("5 · renderer.info (câmera principal)");
+infoFolder.add(stats, "fps").name("FPS").listen().disable();
+infoFolder.add(stats, "drawCalls").name("Draw calls").listen().disable();
+infoFolder.add(stats, "triangles").name("Triângulos").listen().disable();
 
 // Permite ajustar as distâncias de corte da câmera pelo painel
-const cameraFolder = gui.addFolder('Câmera (near / far)');
+const cameraFolder = gui.addFolder("Câmera (near / far)");
 // Recalcula a projeção e atualiza o contorno quando um plano muda
 function onCameraPlanesChange() {
   camera.updateProjectionMatrix();
   frustumHelper.update();
 }
-cameraFolder.add(camera, 'near', 0.01, 10, 0.01).onChange(onCameraPlanesChange);
-cameraFolder.add(camera, 'far', 20, 500, 1).onChange(onCameraPlanesChange);
+cameraFolder.add(camera, "near", 0.01, 10, 0.01).onChange(onCameraPlanesChange);
+cameraFolder.add(camera, "far", 20, 500, 1).onChange(onCameraPlanesChange);
 
 // Os dois sliders ajustam o brilho visível do céu e o quanto ele ilumina o cenário
-const skyFolder = gui.addFolder('Céu (HDR)');
-skyFolder.add(scene, 'backgroundIntensity', 0, 4, 0.05).name('Brilho do céu');
-skyFolder.add(scene, 'environmentIntensity', 0, 2, 0.05).name('Luz do céu no cenário');
+const skyFolder = gui.addFolder("Céu (HDR)");
+skyFolder.add(scene, "backgroundIntensity", 0, 4, 0.05).name("Brilho do céu");
+skyFolder
+  .add(scene, "environmentIntensity", 0, 2, 0.05)
+  .name("Luz do céu no cenário");
 
 // Liga cada tecla numérica à opção correspondente no painel
 const shortcuts = {
-  Digit1: 'wireframe',
-  Digit2: 'depth',
-  Digit3: 'backFaceCulling',
-  Digit4: 'showFrustum',
-  Digit5: 'frustumCulling',
+  Digit1: "wireframe",
+  Digit2: "depth",
+  Digit3: "backFaceCulling",
+  Digit4: "showFrustum",
+  Digit5: "frustumCulling",
 };
 
 // Ao pressionar uma tecla, tenta registrar o movimento antes de procurar um atalho
-window.addEventListener('keydown', (e) => {
+window.addEventListener("keydown", (e) => {
   if (setKey(e.code, true)) {
     e.preventDefault(); // Evita que as setas rolem a página
     return;
@@ -1189,7 +1330,7 @@ window.addEventListener('keydown', (e) => {
   }
 });
 // Ao soltar a tecla, limpa o estado do movimento correspondente
-window.addEventListener('keyup', (e) => {
+window.addEventListener("keyup", (e) => {
   if (setKey(e.code, false)) e.preventDefault();
 });
 
@@ -1199,7 +1340,7 @@ applyDiagnostics();
 // Carrega a vila e reaplica as opções aos modelos que entraram na cena
 buildVillage()
   .catch((error) => {
-    console.error('Erro ao carregar os modelos do vilarejo:', error);
+    console.error("Erro ao carregar os modelos do vilarejo:", error);
   })
   .finally(() => {
     applyDiagnostics();
@@ -1261,6 +1402,18 @@ function animate() {
   updateMovement(delta);
   updateFire(timer.getElapsed(), delta);
   updateFireflies(timer.getElapsed());
+
+  // Só atualiza o esqueleto dos animais que estão perto do jogador
+  const playerPos = controls.object.position;
+  for (const { mixer, animal } of animalMixers) {
+    if (
+      animal.position.distanceToSquared(playerPos) <
+      ANIMATION_RANGE * ANIMATION_RANGE
+    ) {
+      mixer.update(delta);
+    }
+  }
+
   render();
 }
 
@@ -1268,7 +1421,7 @@ function animate() {
 animate();
 
 // Quando a janela muda de tamanho, reajusta a câmera, o canvas e o quadro da visão aérea
-window.addEventListener('resize', () => {
+window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   frustumHelper.update();
