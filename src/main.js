@@ -58,8 +58,9 @@ camera.position.set(12, EYE_HEIGHT, 18);
 camera.lookAt(0, EYE_HEIGHT, 0);
 
 // O antialiasing suaviza as bordas, e o limite de pixel ratio reduz o custo em telas de alta resolução
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const MAX_PIXEL_RATIO = 1.5;
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
 renderer.setSize(window.innerWidth, window.innerHeight);
 // Ativa sombras com filtragem para suavizar as bordas
 renderer.shadowMap.enabled = true;
@@ -166,11 +167,12 @@ function updateMovement(delta) {
 }
 
 // A luz laranja da fogueira fica um pouco acima da lenha
+// A sombra da fogueira é calculado todo quadro, caso esteja muito pesado calcular a cada 3 por ex.
 const fireLight = new THREE.PointLight(0xffa94d, 100, 25, 2);
 fireLight.position.set(0.05, 1.5, -0.09);
 fireLight.castShadow = true;
 // A resolução define o detalhe da sombra, e os ajustes de bias ajudam a evitar listras
-fireLight.shadow.mapSize.set(512, 512);
+fireLight.shadow.mapSize.set(1024, 1024);
 fireLight.shadow.bias = -0.003;
 fireLight.shadow.radius = 4;
 fireLight.shadow.normalBias = 0.03;
@@ -188,11 +190,10 @@ scene.add(lua);
 const luzLua = new THREE.PointLight(0xaec6ff, 5000, 220, 2);
 luzLua.position.copy(lua.position);
 luzLua.castShadow = true;
-luzLua.shadow.mapSize.set(2048, 2048);
+luzLua.shadow.mapSize.set(1024, 1024);
 luzLua.shadow.bias = -0.0015;
 luzLua.shadow.radius = 2;
 luzLua.shadow.autoUpdate = false;
-luzLua.shadow.mapSize.set(512, 512); 
 scene.add(luzLua);
 
 // Um pouco de luz ambiente evita que as áreas na sombra fiquem totalmente pretas
@@ -229,7 +230,7 @@ scene.fog = new THREE.Fog(FOG_COLOR, 45, 95);
 
 const textureLoader = new THREE.TextureLoader();
 // Mantém as texturas mais nítidas quando vistas de lado, com limite de 8
-const maxAnisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 8);
+const maxAnisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 4);
 
 // Carrega uma textura e configura o espaço de cor e a repetição conforme as opções
 function loadTexture(url, { srgb = false, repeat = false } = {}) {
@@ -500,7 +501,7 @@ emberPoints.frustumCulled = false;
 fireEffects.add(emberPoints);
 
 // A fumaça começa com um tom quente e vai ficando acinzentada conforme sobe
-const SMOKE_COUNT = 14;
+const SMOKE_COUNT = 8;
 const SMOKE_WARM = new THREE.Color(0x5a3a28);
 const SMOKE_COOL = new THREE.Color(0x2a2f3c);
 const smokePuffs = [];
@@ -620,7 +621,7 @@ buildWall();
 const fireflyGroup = new THREE.Group();
 scene.add(fireflyGroup);
 
-const FIREFLY_COUNT = 40;
+const FIREFLY_COUNT = 67;
 const fireflyPositions = new Float32Array(FIREFLY_COUNT * 3);
 const fireflyColors = new Float32Array(FIREFLY_COUNT * 3);
 
@@ -884,15 +885,20 @@ async function buildVillage() {
   });
   setupBonfire(bonfire);
 
-  // Carrega as casas em paralelo, na mesma ordem das posições e dos eixos das portas
-  const houses = await Promise.all([
+  const houseSources = await Promise.all([
     loadGLTF(houseModelUrl),
     loadGLTF(houseModelSimpleUrl),
     loadGLTF(houseModelAltUrl),
     loadGLTF(houseModelAlt2Url),
-    loadGLTF(houseModelUrl),
-    loadGLTF(houseModelSimpleUrl),
   ]);
+  const houses = [
+    houseSources[0],
+    houseSources[1],
+    houseSources[2],
+    houseSources[3],
+    SkeletonUtils.clone(houseSources[0]),
+    SkeletonUtils.clone(houseSources[1]),
+  ];
 
   // Cada casa usa o centro e o eixo da porta do mesmo índice
   houses.forEach((house, index) => {
@@ -1267,6 +1273,6 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   frustumHelper.update();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
   layoutInset();
 });
