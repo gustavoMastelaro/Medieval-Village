@@ -120,6 +120,12 @@ const WORLD_RADIUS = 52;
 // Mede o tempo entre os quadros para o movimento e os efeitos da fogueira
 const timer = new THREE.Timer();
 
+// Controle do balanço da câmera: a fase avança com os passos e a intensidade vai de 0 a 1
+let bobPhase = 0;
+let bobAmount = 0;
+const BOB_HEIGHT = 0.04; // Altura do sobe e desce em unidades
+const BOB_FREQUENCY = 1.6; // Passos por unidade de velocidade
+
 // Move o jogador de acordo com as teclas e com o tempo passado desde o último quadro
 function updateMovement(delta) {
   // Só processa o movimento enquanto o mouse estiver capturado
@@ -128,20 +134,28 @@ function updateMovement(delta) {
   // Teclas opostas se cancelam, então cada eixo fica entre -1 e 1
   const strafe = Number(keys.right) - Number(keys.left);
   const advance = Number(keys.forward) - Number(keys.back);
-  if (strafe === 0 && advance === 0) return;
-
-  // Normaliza a direção para andar na diagonal com a mesma velocidade
-  const length = Math.hypot(strafe, advance);
+  const moving = strafe !== 0 || advance !== 0;
   const speed = keys.run ? RUN_SPEED : WALK_SPEED;
-  const step = speed * delta;
 
-  // As direções levam em conta para onde a câmera está virada
-  controls.moveRight((strafe / length) * step);
-  controls.moveForward((advance / length) * step);
+  if (moving) {
+    // Normaliza a direção para andar na diagonal com a mesma velocidade
+    const length = Math.hypot(strafe, advance);
+    const step = speed * delta;
 
-  // Mantém a câmera na altura dos olhos
+    // As direções levam em conta para onde a câmera está virada
+    controls.moveRight((strafe / length) * step);
+    controls.moveForward((advance / length) * step);
+
+    // A fase do balanço avança mais rápido quando o jogador corre
+    bobPhase += delta * speed * BOB_FREQUENCY;
+  }
+
+  // A intensidade sobe suavemente ao começar a andar e desce suavemente ao parar
+  bobAmount += ((moving ? 1 : 0) - bobAmount) * Math.min(1, delta * 10);
+
+  // A altura dos olhos ganha o sobe e desce do passo
   const pos = controls.object.position;
-  pos.y = EYE_HEIGHT;
+  pos.y = EYE_HEIGHT + Math.sin(bobPhase) * BOB_HEIGHT * bobAmount;
 
   // Coloca o jogador de volta na borda quando ele ultrapassa o raio permitido
   const dist = Math.hypot(pos.x, pos.z);
@@ -602,6 +616,77 @@ function buildWall() {
 }
 buildWall();
 
+// Agrupa os vaga-lumes para esconder junto no modo profundidade
+const fireflyGroup = new THREE.Group();
+scene.add(fireflyGroup);
+
+const FIREFLY_COUNT = 40;
+const fireflyPositions = new Float32Array(FIREFLY_COUNT * 3);
+const fireflyColors = new Float32Array(FIREFLY_COUNT * 3);
+
+// Cada vaga-lume tem um ponto de origem, uma fase e velocidades próprias
+const fireflies = Array.from({ length: FIREFLY_COUNT }, () => {
+  const angle = Math.random() * Math.PI * 2;
+  const radius = 6 + Math.random() * (WORLD_RADIUS - 8);
+  return {
+    x: Math.cos(angle) * radius,
+    y: 0.6 + Math.random() * 2.4,
+    z: Math.sin(angle) * radius,
+    phase: Math.random() * Math.PI * 2,
+    speed: 0.3 + Math.random() * 0.5, // Velocidade do passeio
+    blink: 0.6 + Math.random() * 1.2, // Velocidade do piscar
+  };
+});
+
+const fireflyGeometry = new THREE.BufferGeometry();
+const fireflyPositionAttribute = new THREE.BufferAttribute(fireflyPositions, 3);
+const fireflyColorAttribute = new THREE.BufferAttribute(fireflyColors, 3);
+fireflyPositionAttribute.setUsage(THREE.DynamicDrawUsage);
+fireflyColorAttribute.setUsage(THREE.DynamicDrawUsage);
+fireflyGeometry.setAttribute('position', fireflyPositionAttribute);
+fireflyGeometry.setAttribute('color', fireflyColorAttribute);
+
+const fireflyPoints = new THREE.Points(
+  fireflyGeometry,
+  new THREE.PointsMaterial({
+    size: 0.35,
+    map: emberTexture,
+    vertexColors: true,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    sizeAttenuation: true,
+    fog: false,
+  }),
+);
+// As posições mudam toda hora, então o descarte pela câmera fica desligado
+fireflyPoints.frustumCulled = false;
+fireflyGroup.add(fireflyPoints);
+
+// Faz cada vaga-lume passear em volta da origem e piscar em um ritmo próprio
+function updateFireflies(t) {
+  for (let i = 0; i < FIREFLY_COUNT; i++) {
+    const f = fireflies[i];
+    const a = t * f.speed + f.phase;
+
+    fireflyPositions[i * 3] = f.x + Math.sin(a) * 1.5;
+    fireflyPositions[i * 3 + 1] = f.y + Math.sin(a * 1.7) * 0.4;
+    fireflyPositions[i * 3 + 2] = f.z + Math.cos(a * 0.8) * 1.5;
+
+    // O brilho sobe e desce, e fica apagado na metade do ciclo
+    const blink = Math.pow(Math.max(0, Math.sin(t * f.blink + f.phase * 3)), 2);
+    const glow = blink * 2.2;
+    // Tom amarelo-esverdeado
+    fireflyColors[i * 3] = glow * 0.75;
+    fireflyColors[i * 3 + 1] = glow;
+    fireflyColors[i * 3 + 2] = glow * 0.25;
+  }
+  fireflyPositionAttribute.needsUpdate = true;
+  fireflyColorAttribute.needsUpdate = true;
+}
+// Posiciona todos antes do primeiro quadro, para não nascerem na origem
+updateFireflies(0);
+
 // Guarda a malha da chama quando o modelo terminar de carregar
 let flameMesh = null;
 
@@ -1021,6 +1106,7 @@ function applyDiagnostics() {
   scene.overrideMaterial = diag.depth ? depthMaterial : null;
   // No modo de profundidade, a cena fica com fundo preto e sem os efeitos da fogueira
   fireEffects.visible = !diag.depth;
+  fireflyGroup.visible = !diag.depth;
   scene.background = diag.depth ? new THREE.Color(0x000000) : (skyTexture ?? SKY_COLOR);
 
   layoutInset();
@@ -1168,6 +1254,7 @@ function animate() {
 
   updateMovement(delta);
   updateFire(timer.getElapsed(), delta);
+  updateFireflies(timer.getElapsed());
   render();
 }
 
