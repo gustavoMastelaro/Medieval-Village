@@ -115,7 +115,7 @@ function setKey(code, pressed) {
 // Velocidades em unidades por segundo e raio máximo de exploração
 const WALK_SPEED = 5;
 const RUN_SPEED = 10;
-const WORLD_RADIUS = 45;
+const WORLD_RADIUS = 52;
 
 // Mede o tempo entre os quadros para o movimento e os efeitos da fogueira
 const timer = new THREE.Timer();
@@ -545,6 +545,62 @@ for (let i = 0; i < STONE_COUNT; i++) {
   stone.receiveShadow = true;
   scene.add(stone);
 }
+
+// Muro de pedra em círculo ao redor da vila, feito com blocos instanciados (uma única draw call)
+const WALL_RADIUS = 56;
+const WALL_ROWS = 3;
+const BLOCK_LENGTH = 1.9; // Comprimento de cada bloco ao longo do muro
+const BLOCK_HEIGHT = 0.9;
+const BLOCK_THICKNESS = 1.3;
+
+function buildWall() {
+  // Quantos blocos cabem em uma volta completa
+  const perRow = Math.round((2 * Math.PI * WALL_RADIUS) / BLOCK_LENGTH);
+
+  // O eixo Z do bloco é o comprimento, e fica na direção do muro depois da rotação
+  const geometry = new THREE.BoxGeometry(BLOCK_THICKNESS, BLOCK_HEIGHT, BLOCK_LENGTH * 1.05);
+  const material = new THREE.MeshStandardMaterial({
+    color: 0xffffff, // A cor real vem de cada instância
+    roughness: 0.95,
+    metalness: 0,
+    flatShading: true,
+  });
+
+  const wall = new THREE.InstancedMesh(geometry, material, perRow * WALL_ROWS);
+  const dummy = new THREE.Object3D();
+  const color = new THREE.Color();
+
+  let index = 0;
+  for (let row = 0; row < WALL_ROWS; row++) {
+    // Fileiras alternadas ficam deslocadas meio bloco, como numa parede de pedra de verdade
+    const offset = (row % 2) * 0.5;
+
+    for (let k = 0; k < perRow; k++) {
+      const angle = ((k + offset) / perRow) * Math.PI * 2;
+      const radius = WALL_RADIUS + (Math.random() - 0.5) * 0.25;
+
+      dummy.position.set(
+        Math.cos(angle) * radius,
+        BLOCK_HEIGHT * (row + 0.5),
+        Math.sin(angle) * radius,
+      );
+      // Gira o bloco para o comprimento acompanhar a curva, com um desvio pequeno
+      dummy.rotation.set(0, -angle + (Math.random() - 0.5) * 0.08, 0);
+      dummy.scale.set(0.95 + Math.random() * 0.15, 1, 0.9 + Math.random() * 0.2);
+      dummy.updateMatrix();
+
+      wall.setMatrixAt(index, dummy.matrix);
+      // Cada pedra recebe um tom de cinza ligeiramente diferente
+      wall.setColorAt(index, color.setHSL(0.6, 0.04, 0.35 + Math.random() * 0.15));
+      index++;
+    }
+  }
+
+  wall.castShadow = true;
+  wall.receiveShadow = true;
+  scene.add(wall);
+}
+buildWall();
 
 // Guarda a malha da chama quando o modelo terminar de carregar
 let flameMesh = null;
