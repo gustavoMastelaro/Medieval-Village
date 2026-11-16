@@ -4,7 +4,7 @@ Vila medieval em 3D feita com Three.js, que dá para explorar em primeira pessoa
 
 Projeto da disciplina de Computação Gráfica.
 
-[Vila medieval](docs/screenshot.png)
+![Vila medieval](docs/screenshot.png)
 
 ## Funcionalidades
 
