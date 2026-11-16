@@ -87,7 +87,7 @@ O painel também mostra FPS, draw calls e triângulos.
 | `casas e fogueira` | `Quaternius` | `https://poly.pizza/bundle/Stylized-Nature-MegaKit-T34GZFA0fm` | `CC0 1.0` |
 | `árvores` | `Quaternius` | `https://poly.pizza/bundle/Ultimate-Fantasy-RTS-nSDjmACoSU` | `CC0 1.0` |
 | `cavalo e pug` | `Quaternius` | `https://poly.pizza/bundle/Farm-Animal-Pack-1kUvRTPLzT` | `CC0 1.0` |
-| `céu HDR` | `Greg Zaal` | `https://polyhaven.com/a/satara_night` | `CC0` |
+| `céu HDR` | `Greg Zaal` | `https://polyhaven.com/a/satara_night` | `CC0 1.0` |
 | `texturas de grama e terra` | `Geradas proceduralmente com ajuda do Claude (Anthropic)` | `https://claude.ai` | `CC0 1.0` |
 
 ### Equipe
