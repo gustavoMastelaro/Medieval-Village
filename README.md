@@ -140,7 +140,9 @@ Foram adotadas algumas técnicas para reduzir o custo de processamento e melhora
 - Carregamento único dos modelos, com reutilização por meio de `SkeletonUtils.clone`.
 - Utilização de `InstancedMesh` para os blocos do muro.
 - Utilização de `Points` para renderizar partículas de forma eficiente.
-- Lim
+- Limite de `pixelRatio` em 1,5 e anisotropia das texturas em 4.
+- Atualização das animações dos cavalos somente quando estão a menos de 40 unidades do jogador.
+- Atualização única das sombras da lua, evitando cálculos desnecessários.
 
 ## Nota de Trasparência
 
