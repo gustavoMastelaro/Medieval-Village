@@ -78,6 +78,70 @@ O painel também mostra FPS, draw calls e triângulos.
     └── texturas/          # Céu HDR, grama, terra e máscaras
 ```
 
+## Decisões técnicas
+
+### Iluminação
+
+O projeto utiliza diferentes fontes de iluminação para representar o ambiente noturno:
+
+| Luz | Tipo | Configuração |
+| --- | --- | --- |
+| Fogueira | `PointLight` | Luz alaranjada, intensidade 100 e alcance 25, com pequenas variações para simular o movimento das chamas. |
+| Lua | `PointLight` | Luz azulada, intensidade 5000 e alcance 220, simulando a iluminação lunar. |
+| Ambiente | `AmbientLight` | Luz azulada de intensidade 0,12, evitando áreas completamente escuras. |
+| Céu (HDR) | `scene.environment` | Utilizado como fundo e iluminação indireta, com intensidade ajustável. |
+
+### Sombras
+
+As sombras são configuradas para equilibrar qualidade visual e desempenho.
+
+| Luz | `mapSize` | `bias` | `normalBias` | `radius` |
+| --- | --- | --- | --- | --- |
+| Fogueira | 1024 | -0,003 | 0,03 | 4 |
+| Lua | 1024 | -0,0015 | Padrão | 2 |
+
+- **Filtro:** `PCFShadowMap`, utilizado para suavizar as bordas das sombras.
+- **Precisão:** os parâmetros `bias` e `normalBias` ajudam a evitar imperfeições nas sombras.
+- **Desempenho:** a sombra da fogueira é atualizada a cada quadro, enquanto a da lua é calculada apenas uma vez, pois sua posição não muda.
+- **Alcance:** a área de sombras da fogueira é limitada a 25 unidades.
+
+### Materiais
+
+Os materiais foram escolhidos de acordo com as características visuais de cada elemento:
+
+| Objeto | Material | Aplicação |
+| --- | --- | --- |
+| Chão | `MeshStandardMaterial` | Texturas de grama com variações de brilho para reduzir a repetição visual. |
+| Praça e caminhos | `MeshStandardMaterial` | Texturas de terra com transparência nas bordas. |
+| Pedras da fogueira | `MeshStandardMaterial` | Superfícies com faces marcadas e alta rugosidade. |
+| Muro | `InstancedMesh` | Blocos com variações de cor, tamanho e rotação. |
+| Chama | Material emissivo | Degradê de amarelo para vermelho aplicado por meio de shader. |
+| Lua | `MeshBasicMaterial` | Material independente da iluminação da cena. |
+| Partículas | `PointsMaterial` e `SpriteMaterial` | Utilizados para fagulhas, fumaça, brilho e vaga-lumes. |
+
+Os materiais `MeshStandardMaterial` utilizam o modelo PBR, proporcionando uma interação mais realista com as fontes de iluminação.
+
+### Câmera
+
+A câmera utiliza `PerspectiveCamera`, com campo de visão de 50 graus, proporcionando uma perspectiva natural do ambiente.
+
+- **Distância:** planos `near` de 0,1 e `far` de 200.
+- **Posição inicial:** `(12, 1,7, 18)`, com altura de 1,7 unidade.
+- **Movimentação:** `PointerLockControls`, com velocidade de 5 unidades/s para caminhar e 10 unidades/s para correr.
+- **Limites:** movimentação restrita a um raio de 52 unidades, evitando ultrapassar o muro.
+- **Animação:** pequeno movimento vertical da câmera durante a caminhada.
+- **Neblina:** utilizada para suavizar a visualização dos limites do cenário.
+- **Diagnóstico:** uma segunda câmera exibe o frustum da câmera principal para auxiliar na análise da cena.
+
+### Desempenho
+
+Foram adotadas algumas técnicas para reduzir o custo de processamento e melhorar a renderização:
+
+- Carregamento único dos modelos, com reutilização por meio de `SkeletonUtils.clone`.
+- Utilização de `InstancedMesh` para os blocos do muro.
+- Utilização de `Points` para renderizar partículas de forma eficiente.
+- Lim
+
 ## Nota de Trasparência
 
 Usamos o Claude (Anthropic) como apoio durante o desenvolvimento. Esta seção registra o que foi pedido, o que foi validado ou alterado por nós e o que foi descartado.
