@@ -150,7 +150,7 @@ Usamos o Claude (Anthropic) como apoio durante o desenvolvimento. Esta seção r
 
 ### O que foi pedido para à IA
 
-- Geração das texturas de grama e terra (licenciadas como CC0, veja [Créditos](#créditos-licenças-e-referências)).
+- Geração das texturas de grama e terra (licenciadas como CC0, veja [Créditos](#créditos)).
 - Otimizações de desempenho (sombra estática da lua, clonagem de modelos, limites de resolução).
 - Sugestões de melhorias simples e estudo de colisão.
 - Esqueleto para o README
